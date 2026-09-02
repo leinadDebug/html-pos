@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>ZOHO POS - Inventory Deduction System</title>
+		<script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+		<style>
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+				font-family: 'Segoe UI', system-ui, sans-serif;
+			}
+
+			body {
+				background: #f4f6f8;
+				color: #2c3e50;
+			}
+
+			/* Header - ZOHO style */
+			.header {
+				background: #e42527;
+				color: #fff;
+				padding: 14px 24px;
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				box-shadow: 0 2px 8px rgba(0, 0, 0, .15);
+			}
+
+			.header h1 {
+				font-size: 20px;
+				font-weight: 600;
+			}
+
+			.header h1 span {
+				font-weight: 300;
+				opacity: .9;
+			}
+
+			.store-badge {
+				background: rgba(255, 255, 255, .2);
+				padding: 6px 14px;
+				border-radius: 20px;
+				font-size: 13px;
+			}
+
+			.layout {
+				display: grid;
+				grid-template-columns: 1fr 380px;
+				gap: 16px;
+				padding: 16px;
+				max-width: 1400px;
+				margin: auto;
+			}
+
+			@media(max-width:900px) {
+				.layout {
+					grid-template-columns: 1fr;
+				}
+			}
+
+			.card {
+				background: #fff;
+				border-radius: 8px;
+				box-shadow: 0 1px 4px rgba(0, 0, 0, .08);
+				overflow: hidden;
+			}
+
+			.card-head {
+				padding: 14px 18px;
+				border-bottom: 1px solid #eee;
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+			}
+
+			.card-head h2 {
+				font-size: 15px;
+				font-weight: 600;
+				color: #333;
+			}
+
+			.card-body {
+				padding: 18px;
+			}
+
+			/* Scanner */
+			#scannerView {
+				width: 100%;
+				height: 280px;
+				background: #000;
+				border-radius: 6px;
+				position: relative;
+				overflow: hidden;
+				display: none;
+			}
+
+			#scannerView video {
+				width: 100%;
+				height: 100%;
+				object-fit: cover;
+			}
+
+			#scannerView .reticle {
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				width: 70%;
+				height: 110px;
+				transform: translate(-50%, -50%);
+				border: 2px solid #e42527;
+				border-radius: 8px;
+				box-shadow: 0 0 0 2000px rgba(0, 0, 0, .45);
+			}
+
+			.btn {
+				border: none;
+				border-radius: 6px;
+				padding: 10px 18px;
+				cursor: pointer;
+				font-size: 14px;
+				font-weight: 600;
+				transition: .15s;
+			}
+
+			.btn-red {
+				background: #e42527;
+				color: #fff;
+			}
+
+			.btn-red:hover {
+				background: #c01e20;
+			}
+
+			.btn-green {
+				background: #1a9c5d;
+				color: #fff;
+			}
+
+			.btn-green:hover {
+				background: #15854e;
+			}
+
+			.btn-gray {
+				background: #eef1f4;
+				color: #555;
+			}
+
+			.btn-gray:hover {
+				background: #dde3e9;
+			}
+
+			.btn-block {
+				width: 100%;
+			}
+
+			.scan-input {
+				display: flex;
+				gap: 8px;
+				margin-top: 12px;
+			}
+
+			.scan-input input {
+				flex: 1;
+				padding: 10px 12px;
+				border: 1px solid #d5dbe1;
+				border-radius: 6px;
+				font-size: 14px;
+			}
+
+			/* Inventory table */
+			table {
+				width: 100%;
+				border-collapse: collapse;
+				font-size: 13px;
+			}
+
+			th {
+				background: #f8f9fa;
+				text-align: left;
+				padding: 10px 12px;
+				color: #666;
+				font-weight: 600;
+				border-bottom: 2px solid #e8ecef;
+			}
+
+			td {
+				padding: 10px 12px;
+				border-bottom: 1px solid #f0f2f4;
+			}
+
+			tr:hover td {
+				background: #fafbfc;
+			}
+
+			.stock-badge {
+				padding: 3px 10px;
+				border-radius: 12px;
+				font-size: 12px;
+				font-weight: 600;
+			}
+
+			.ok {
+				background: #e3f6ec;
+				color: #1a9c5d;
+			}
+
+			.low {
+				background: #fff3e0;
+				color: #e67e22;
+			}
+
+			.out {
+				background: #fdeaea;
+				color: #e42527;
+			}
+
+			/* Cart */
+			.cart-item {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				padding: 10px 0;
+				border-bottom: 1px solid #f0f2f4;
+				font-size: 14px;
+			}
+
+			.cart-item .qty {
+				background: #eef1f4;
+				border-radius: 4px;
+				padding: 2px 8px;
+				margin: 0 6px;
+				font-weight: 600;
+			}
+
+			.cart-item button {
+				background: #fdeaea;
+				color: #e42527;
+				border: none;
+				border-radius: 4px;
+				width: 24px;
+				height: 24px;
+				cursor: pointer;
+				font-weight: bold;
+			}
+
+			.totals {
+				padding: 14px 18px;
+				background: #f8f9fa;
+				border-top: 1px solid #eee;
+				font-size: 14px;
+			}
+
+			.totals .row {
+				display: flex;
+				justify-content: space-between;
+				margin-bottom: 6px;
+			}
+
+			.totals .row.grand {
+				font-size: 18px;
+				font-weight: 700;
+				color: #e42527;
+				border-top: 1px dashed #ddd;
+				padding-top: 8px;
+			}
+
+			.toast {
+				position: fixed;
+				bottom: 24px;
+				right: 24px;
+				background: #2c3e50;
+				color: #fff;
+				padding: 12px 20px;
+				border-radius: 8px;
+				font-size: 14px;
+				opacity: 0;
+				transition: .3s;
+				z-index: 99;
+			}
+
+			.toast.show {
+				opacity: 1;
+			}
+
+			.toast.err {
+				background: #e42527;
+			}
+
+			.empty {
+				text-align: center;
+				color: #999;
+				padding: 30px;
+				font-size: 14px;
+			}
+
+			.lowstock-alert {
+				background: #fff3e0;
+				border-left: 4px solid #e67e22;
+				padding: 10px 14px;
+				font-size: 13px;
+				margin-bottom: 12px;
+				display: none;
+			}
+
+		</style>
+	</head>
+
+	<body>
+		<div class="header">
+			<h1>ZOHO <span>POS</span></h1>
+			<div class="store-badge">📍 Store #001 · Register 1 · <span id="clock"></span></div>
+		</div>
+		<div class="layout">
+			<!-- LEFT: Scanner + Inventory -->
+			<div>
+				<div class="card" style="margin-bottom:16px;">
+					<div class="card-head">
+						<h2>📷 Barcode Scanner</h2><span style="font-size:12px;color:#999">Scan to deduct stock</span>
+					</div>
+					<div class="card-body">
+						<div class="lowstock-alert" id="lowAlert"></div>
+						<div id="scannerView">
+							<div class="reticle"></div><video id="video" autoplay muted></video>
+						</div>
+						<button class="btn btn-red btn-block" id="scanBtn" onclick="toggleScanner()">▶ Start Camera Scan</button>
+						<div class="scan-input">
+							<input id="manualBarcode" placeholder="Or type / USB-scanner input: barcode + Enter" autocomplete="off">
+							<button class="btn btn-gray" onclick="manualLookup()">Lookup</button>
+						</div>
+					</div>
+				</div>
+				<div class="card">
+					<div class="card-head">
+						<h2>📦 Inventory</h2><span id="invCount" style="font-size:12px;color:#999"></span>
+					</div>
+					<div class="card-body" style="padding:0; overflow-x:auto;">
+						<table>
+							<thead>
+								<tr>
+									<th>Barcode</th>
+									<th>Item</th>
+									<th>Price</th>
+									<th>Stock</th>
+									<th>Status</th>
+								</tr>
+							</thead>
+							<tbody id="invBody"></tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+			<!-- RIGHT: Sale / Cart -->
+			<div>
+				<div class="card">
+					<div class="card-head">
+						<h2>🛒 Current Sale</h2><button class="btn btn-gray" style="padding:5px 12px;font-size:12px" onclick="clearCart()">Clear</button>
+					</div>
+					<div class="card-body" id="cartBody">
+						<div class="empty">Scan an item to begin</div>
+					</div>
+					<div class="totals">
+						<div class="row"><span>Items</span><span id="tQty">0</span></div>
+						<div class="row"><span>Subtotal</span><span id="tSub">$0.00</span></div>
+						<div class="row"><span>Tax (8%)</span><span id="tTax">$0.00</span></div>
+						<div class="row grand"><span>TOTAL</span><span id="tTotal">$0.00</span></div>
+						<br>
+						<button class="btn btn-green btn-block" onclick="checkout()">✓ Complete Sale & Deduct Stock</button>
+					</div>
+				</div>
+				<div class="card" style="margin-top:16px;">
+					<div class="card-head">
+						<h2>🧾 Recent Transactions</h2>
+					</div>
+					<div class="card-body" id="txBody" style="font-size:13px;">
+						<div class="empty">No sales yet</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="toast" id="toast"></div>
+		<script>
+			/* ============ DATA (simulates Zoho Inventory backend) ============ */
+			const TAX_RATE = 0.08;
+			let inventory = JSON.parse(localStorage.getItem('zoho_pos_inv')) || [{
+				barcode: '8901234567890',
+				name: 'Organic Coffee Beans 500g',
+				price: 12.99,
+				stock: 45
+			}, {
+				barcode: '1234567890128',
+				name: 'Green Tea Pack (25 bags)',
+				price: 5.49,
+				stock: 8
+			}, {
+				barcode: '4006381333931',
+				name: 'Dark Chocolate Bar 100g',
+				price: 3.25,
+				stock: 120
+			}, {
+				barcode: '5012345678900',
+				name: 'Almond Milk 1L',
+				price: 4.75,
+				stock: 3
+			}, {
+				barcode: '012345678905',
+				name: 'Protein Bar - Choco',
+				price: 2.99,
+				stock: 60
+			}, ];
+			let cart = {};
+			let txLog = JSON.parse(localStorage.getItem('zoho_pos_tx')) || [];
+			let scanning = false;
+
+			function saveAll() {
+				localStorage.setItem('zoho_pos_inv', JSON.stringify(inventory));
+				localStorage.setItem('zoho_pos_tx', JSON.stringify(txLog));
+			}
+			/* ============ UI RENDER ============ */
+			function renderInventory() {
+				const tb = document.getElementById('invBody');
+				tb.innerHTML = inventory.map(i => {
+					const cls = i.stock === 0 ? 'out' : i.stock <= 10 ? 'low' : 'ok';
+					const lbl = i.stock === 0 ? 'OUT' : i.stock <= 10 ? 'LOW' : 'OK';
+					return `<tr><td style="font-family:monospace">i.barcode</td><td>{i.barcode}</td><td>i.barcode</td><td>{i.name}</td>
+      <td>{i.price.toFixed(2)}</td><td><b>${i.stock}</b></td>
+      <td><span class="stock-badge ${cls}">${lbl}</span></td></tr>`;
+				}).join('');
+				document.getElementById('invCount').textContent = inventory.length + ' items';
+				const low = inventory.filter(i => i.stock <= 10);
+				const alertBox = document.getElementById('lowAlert');
+				if (low.length) {
+					alertBox.style.display = 'block';
+					alertBox.innerHTML = '⚠️ Low stock: ' + low.map(i => i.name + ' (' + i.stock + ')').join(', ');
+				} else alertBox.style.display = 'none';
+			}
+
+			function renderCart() {
+				const body = document.getElementById('cartBody');
+				const codes = Object.keys(cart);
+				if (!codes.length) {
+					body.innerHTML = '<div class="empty">Scan an item to begin</div>';
+				} else body.innerHTML = codes.map(c => {
+					const it = cart[c];
+					return `<div class="cart-item"><div>${it.name}<br>
+      <small>${it.qty} ×{it.price.toFixed(2)}</small></div>
+      <div><span class="qty">it.qty</span><buttononclick="removeItem(′{it.qty}</span><button onclick="removeItem('it.qty</span><buttononclick="removeItem(′{c}')">✕</button></div></div>`;
+				}).join('');
+				const qty = codes.reduce((s, c) => s + cart[c].qty, 0);
+				const sub = codes.reduce((s, c) => s + cart[c].qty * cart[c].price, 0);
+				const tax = sub * TAX_RATE;
+				document.getElementById('tQty').textContent = qty;
+				document.getElementById('tSub').textContent = '$' + sub.toFixed(2);
+				document.getElementById('tTax').textContent = '$' + tax.toFixed(2);
+				document.getElementById('tTotal').textContent = '$' + (sub + tax).toFixed(2);
+			}
+
+			function renderTx() {
+				const b = document.getElementById('txBody');
+				if (!txLog.length) {
+					b.innerHTML = '<div class="empty">No sales yet</div>';
+					return;
+				}
+				b.innerHTML = txLog.slice(-8).reverse().map(t => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f2f4">
+     <span>#t.id⋅{t.id} ·t.id⋅{t.items} item(s)</span><b style="color:#1a9c5d">$${t.total.toFixed(2)}</b></div>`).join('');
+			}
+			/* ============ SCAN & DEDUCT LOGIC ============ */
+			function processBarcode(code) {
+				const item = inventory.find(i => i.barcode === code);
+				if (!item) {
+					showToast('❌ Unknown barcode: ' + code, true);
+					return;
+				}
+				if (item.stock <= 0) {
+					showToast(`❌ "${item.name}" is OUT OF STOCK`, true);
+					return;
+				}
+				// add to cart (stock deducted at checkout; live preview shows remaining)
+				cart[code] = cart[code] || {
+					name: item.name,
+					price: item.price,
+					qty: 0
+				};
+				cart[code].qty++;
+				item.stock--; // live deduction preview
+				renderInventory();
+				renderCart();
+				showToast(`✅ item.name—stocknow{item.name} — stock nowitem.name—stocknow{item.stock}`);
+				if (item.stock <= 10) showToast(`⚠️ Low stock alert: item.name({item.name} (item.name({item.stock} left)`, true);
+			}
+
+			function removeItem(code) {
+				cart[code].qty--;
+				inventory.find(i => i.barcode === code).stock++;
+				if (cart[code].qty <= 0) delete cart[code];
+				renderInventory();
+				renderCart();
+			}
+
+			function clearCart() {
+				Object.keys(cart).forEach(c => inventory.find(i => i.barcode === c).stock += cart[c].qty);
+				cart = {};
+				renderInventory();
+				renderCart();
+			}
+
+			function checkout() {
+				const codes = Object.keys(cart);
+				if (!codes.length) {
+					showToast('Cart is empty', true);
+					return;
+				}
+				const qty = codes.reduce((s, c) => s + cart[c].qty, 0);
+				const total = codes.reduce((s, c) => s + cart[c].qty * cart[c].price, 0) * 1.08;
+				txLog.push({
+					id: Date.now() % 100000,
+					items: qty,
+					total
+				});
+				cart = {};
+				saveAll();
+				renderInventory();
+				renderCart();
+				renderTx();
+				showToast('🧾 Sale completed — stock deducted in Zoho Inventory');
+			}
+
+			function manualLookup() {
+				const v = document.getElementById('manualBarcode').value.trim();
+				if (v) {
+					processBarcode(v);
+					document.getElementById('manualBarcode').value = '';
+				}
+			}
+			document.getElementById('manualBarcode').addEventListener('keydown', e => {
+				if (e.key === 'Enter') manualLookup();
+			});
+			/* ============ CAMERA SCANNER (QuaggaJS) ============ */
+			function toggleScanner() {
+				scanning ? stopScanner() : startScanner();
+			}
+
+			function startScanner() {
+				document.getElementById('scannerView').style.display = 'block';
+				document.getElementById('scanBtn').textContent = '⏹ Stop Camera Scan';
+				scanning = true;
+				Quagga.init({
+					inputStream: {
+						name: 'Live',
+						type: 'LiveStream',
+						target: document.getElementById('video'),
+						constraints: {
+							facingMode: 'environment',
+							width: 640,
+							height: 480
+						}
+					},
+					decoder: {
+						readers: ['ean_reader', 'ean_8_reader', 'upc_reader', 'code_128_reader', 'code_39_reader']
+					},
+					locate: true
+				}, err => {
+					if (err) {
+						showToast('Camera error: ' + err, true);
+						stopScanner();
+						return;
+					}
+					Quagga.start();
+				});
+				Quagga.onDetected(data => {
+					const code = data.codeResult.code;
+					document.getElementById('scannerView').style.display = 'none';
+					Quagga.stop();
+					scanning = false;
+					document.getElementById('scanBtn').textContent = '▶ Start Camera Scan';
+					processBarcode(code);
+				});
+			}
+
+			function stopScanner() {
+				Quagga.stop();
+				scanning = false;
+				document.getElementById('scannerView').style.display = 'none';
+				document.getElementById('scanBtn').textContent = '▶ Start Camera Scan';
+			}
+			/* ============ UTIL ============ */
+			function showToast(msg, isErr) {
+				const t = document.getElementById('toast');
+				t.textContent = msg;
+				t.className = 'toast show' + (isErr ? ' err' : '');
+				clearTimeout(t._h);
+				t._h = setTimeout(() => t.className = 'toast', 2500);
+			}
+			setInterval(() => document.getElementById('clock').textContent = new Date().toLocaleTimeString(), 1000);
+			renderInventory();
+			renderCart();
+			renderTx();
+
+		</script>
+	</body>
+
+</html>
