@@ -55,6 +55,33 @@
 				max-width: 1400px;
 				margin: auto;
 			}
+			.quantity-control {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.quantity-control button {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    background: #eef1f4;
+}
+
+.quantity-control span {
+    min-width: 28px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.quantity-control .remove-btn {
+    margin-left: 6px;
+    background: #fdeaea;
+    color: #e42527;
+}
 
 			@media(max-width:900px) {
 				.layout {
@@ -425,9 +452,13 @@
 				tb.innerHTML = inventory.map(i => {
 					const cls = i.stock === 0 ? 'out' : i.stock <= 10 ? 'low' : 'ok';
 					const lbl = i.stock === 0 ? 'OUT' : i.stock <= 10 ? 'LOW' : 'OK';
-					return `<tr><td style="font-family:monospace">i.barcode</td><td>{i.barcode}</td><td>i.barcode</td><td>{i.name}</td>
-      <td>{i.price.toFixed(2)}</td><td><b>${i.stock}</b></td>
-      <td><span class="stock-badge ${cls}">${lbl}</span></td></tr>`;
+					return `<tr>
+    <td style="font-family:monospace">${i.barcode}</td>
+    <td>${i.name}</td>
+    <td>$${i.price.toFixed(2)}</td>
+    <td><b>${i.stock}</b></td>
+    <td><span class="stock-badge ${cls}">${lbl}</span></td>
+</tr>`;
 				}).join('');
 				document.getElementById('invCount').textContent = inventory.length + ' items';
 				const low = inventory.filter(i => i.stock <= 10);
@@ -439,24 +470,48 @@
 			}
 
 			function renderCart() {
-				const body = document.getElementById('cartBody');
-				const codes = Object.keys(cart);
-				if (!codes.length) {
-					body.innerHTML = '<div class="empty">Scan an item to begin</div>';
-				} else body.innerHTML = codes.map(c => {
-					const it = cart[c];
-					return `<div class="cart-item"><div>${it.name}<br>
-      <small>${it.qty} ×{it.price.toFixed(2)}</small></div>
-      <div><span class="qty">it.qty</span><buttononclick="removeItem(′{it.qty}</span><button onclick="removeItem('it.qty</span><buttononclick="removeItem(′{c}')">✕</button></div></div>`;
-				}).join('');
-				const qty = codes.reduce((s, c) => s + cart[c].qty, 0);
-				const sub = codes.reduce((s, c) => s + cart[c].qty * cart[c].price, 0);
-				const tax = sub * TAX_RATE;
-				document.getElementById('tQty').textContent = qty;
-				document.getElementById('tSub').textContent = '$' + sub.toFixed(2);
-				document.getElementById('tTax').textContent = '$' + tax.toFixed(2);
-				document.getElementById('tTotal').textContent = '$' + (sub + tax).toFixed(2);
-			}
+    const body = document.getElementById('cartBody');
+    const codes = Object.keys(cart);
+
+    if (!codes.length) {
+        body.innerHTML = '<div class="empty">Scan an item to begin</div>';
+    } else {
+        body.innerHTML = codes.map(code => {
+            const item = cart[code];
+
+            return `
+                <div class="cart-item">
+                    <div>
+                        <strong>${item.name}</strong><br>
+                        <small>$${item.price.toFixed(2)} each</small>
+                    </div>
+
+                    <div class="quantity-control">
+                        <button onclick="decreaseQty('${code}')">−</button>
+                        <span>${item.qty}</span>
+                        <button onclick="increaseQty('${code}')">+</button>
+                        <button class="remove-btn"
+                                onclick="removeItem('${code}')">✕</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    const qty = codes.reduce((sum, code) => sum + cart[code].qty, 0);
+    const sub = codes.reduce(
+        (sum, code) => sum + cart[code].qty * cart[code].price,
+        0
+    );
+
+    const tax = sub * TAX_RATE;
+
+    document.getElementById('tQty').textContent = qty;
+    document.getElementById('tSub').textContent = '$' + sub.toFixed(2);
+    document.getElementById('tTax').textContent = '$' + tax.toFixed(2);
+    document.getElementById('tTotal').textContent =
+        '$' + (sub + tax).toFixed(2);
+}
 
 			function renderTx() {
 				const b = document.getElementById('txBody');
@@ -488,9 +543,40 @@
 				item.stock--; // live deduction preview
 				renderInventory();
 				renderCart();
-				showToast(`✅ item.name—stocknow{item.name} — stock nowitem.name—stocknow{item.stock}`);
-				if (item.stock <= 10) showToast(`⚠️ Low stock alert: item.name({item.name} (item.name({item.stock} left)`, true);
+				showToast(`✅ ${item.name} — stock now ${item.stock}`);
+				if (item.stock <= 10) {
+    showToast(`⚠️ Low stock alert: ${item.name} (${item.stock} left)`, true);
+}
 			}
+			function increaseQty(code) {
+    const item = inventory.find(i => i.barcode === code);
+    if (!item) return;
+
+    if (item.stock <= 0) {
+        showToast(`❌ No more "${item.name}" in stock`, true);
+        return;
+    }
+
+    cart[code].qty++;
+    item.stock--;
+
+    renderInventory();
+    renderCart();
+}
+function decreaseQty(code) {
+    const item = inventory.find(i => i.barcode === code);
+    if (!item || !cart[code]) return;
+
+    cart[code].qty--;
+    item.stock++;
+
+    if (cart[code].qty <= 0) {
+        delete cart[code];
+    }
+
+    renderInventory();
+    renderCart();
+}
 
 			function removeItem(code) {
 				cart[code].qty--;
@@ -542,43 +628,68 @@
 			function toggleScanner() {
 				scanning ? stopScanner() : startScanner();
 			}
-
 			function startScanner() {
-				document.getElementById('scannerView').style.display = 'block';
-				document.getElementById('scanBtn').textContent = '⏹ Stop Camera Scan';
-				scanning = true;
-				Quagga.init({
-					inputStream: {
-						name: 'Live',
-						type: 'LiveStream',
-						target: document.getElementById('video'),
-						constraints: {
-							facingMode: 'environment',
-							width: 640,
-							height: 480
-						}
-					},
-					decoder: {
-						readers: ['ean_reader', 'ean_8_reader', 'upc_reader', 'code_128_reader', 'code_39_reader']
-					},
-					locate: true
-				}, err => {
-					if (err) {
-						showToast('Camera error: ' + err, true);
-						stopScanner();
-						return;
-					}
-					Quagga.start();
-				});
-				Quagga.onDetected(data => {
-					const code = data.codeResult.code;
-					document.getElementById('scannerView').style.display = 'none';
-					Quagga.stop();
-					scanning = false;
-					document.getElementById('scanBtn').textContent = '▶ Start Camera Scan';
-					processBarcode(code);
-				});
-			}
+    const scannerView = document.getElementById('scannerView');
+    const scanBtn = document.getElementById('scanBtn');
+
+    scannerView.style.display = 'block';
+    scanBtn.textContent = '⏹ Stop Camera Scan';
+    scanning = true;
+
+    Quagga.init({
+        inputStream: {
+            name: 'Live',
+            type: 'LiveStream',
+            target: scannerView,
+            constraints: {
+                facingMode: { ideal: 'environment' },
+                width: { min: 640 },
+                height: { min: 480 }
+            }
+        },
+        locator: {
+            patchSize: 'medium',
+            halfSample: true
+        },
+        numOfWorkers: navigator.hardwareConcurrency || 4,
+        decoder: {
+            readers: [
+                'ean_reader',
+                'ean_8_reader',
+                'upc_reader',
+                'code_128_reader',
+                'code_39_reader'
+            ]
+        },
+        locate: true
+    }, function(err) {
+
+        if (err) {
+            console.error('Quagga error:', err);
+            showToast('Camera error: ' + err.message, true);
+            stopScanner();
+            return;
+        }
+
+        console.log('Scanner initialized');
+        Quagga.start();
+    });
+
+    Quagga.offDetected();
+    Quagga.onDetected(function(data) {
+
+        if (!data || !data.codeResult) return;
+
+        const code = data.codeResult.code;
+
+        if (!code) return;
+
+        console.log('Barcode detected:', code);
+
+        stopScanner();
+        processBarcode(code);
+    });
+}
 
 			function stopScanner() {
 				Quagga.stop();
