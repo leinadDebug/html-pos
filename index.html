@@ -1,915 +1,772 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="h-full bg-[#f8f8f6]" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ATELIER POS — Zoho Inventory Terminal</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?familyInter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+<script data-purpose="tailwind-config">
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+          mono: ['JetBrains Mono', 'Menlo', 'monospace']
+        },
+        colors: {
+          stone: {
+            50: '#fbfbf9', 100: '#f8f8f6', 200: '#eeeeeb', 300: '#e2e2dc',
+            400: '#a8a89f', 500: '#73736b', 600: '#52524d', 700: '#3f3f3b',
+            800: '#272725', 900: '#171716'
+          },
+          cobalt: {
+            500: '#2563eb', 600: '#1d4ed8', 700: '#1e3a8a', 800: '#172554', 900: '#0f172a'
+          }
+        }
+      }
+    }
+  }
+</script>
+<style>
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #e2e2dc; border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: #a8a89f; }
+  @keyframes live-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.3); opacity: 0.4; }
+  }
+  .status-dot-pulse { animation: live-pulse 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+  .hairline-b { border-bottom: 1px solid #e8e8e5; }
+  .hair-r { border-right: 1px solid #e8e8e5; }
+  .hairline-t { border-top: 1px solid #e8e8e5; }
+  .hairline-all { border: 1px solid #e8e8e5; }
+  #scannerView video { width: 100%; height: 100%; object-fit: cover; }
+  #scannerView .reticle {
+    position: absolute; top: 50%; left: 50%; width: 70%; height: 110px;
+    transform: translate(-50%, -50%); border: 2px solid #d4d4d4; border-radius: 8px;
+    box-shadow: 0 0 0 2000px rgba(0,0,0,.45); z-index: 10;
+  }
+</style>
+</head>
+<body class="h-full overflow-hidden flex flex-col font-sans bg-[#f8f8f6] text-stone-800 antialiased select-none">
 
-	<head>
-		<meta charset="UTF-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1.0">
-		<title>ZOHO POS - Inventory Deduction System</title>
-		<script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
-		<style>
-			* {
-				margin: 0;
-				padding: 0;
-				box-sizing: border-box;
-				font-family: 'Segoe UI', system-ui, sans-serif;
-			}
-
-			body {
-				background: #f4f6f8;
-				color: #2c3e50;
-			}
-
-			/* Header - ZOHO style */
-			.header {
-				background: #e42527;
-				color: #fff;
-				padding: 14px 24px;
-				display: flex;
-				align-items: center;
-				justify-content: space-between;
-				box-shadow: 0 2px 8px rgba(0, 0, 0, .15);
-			}
-
-			.header h1 {
-				font-size: 20px;
-				font-weight: 600;
-			}
-
-			.header h1 span {
-				font-weight: 300;
-				opacity: .9;
-			}
-
-			.store-badge {
-				background: rgba(255, 255, 255, .2);
-				padding: 6px 14px;
-				border-radius: 20px;
-				font-size: 13px;
-			}
-
-			.layout {
-				display: grid;
-				grid-template-columns: 1fr 380px;
-				gap: 16px;
-				padding: 16px;
-				max-width: 1400px;
-				margin: auto;
-			}
-			.quantity-control {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.quantity-control button {
-    width: 28px;
-    height: 28px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: bold;
-    background: #eef1f4;
-}
-
-.quantity-control span {
-    min-width: 28px;
-    text-align: center;
-    font-weight: 600;
-}
-
-.quantity-control .remove-btn {
-    margin-left: 6px;
-    background: #fdeaea;
-    color: #e42527;
-}
-
-			@media(max-width:900px) {
-				.layout {
-					grid-template-columns: 1fr;
-				}
-			}
-
-			.card {
-				background: #fff;
-				border-radius: 8px;
-				box-shadow: 0 1px 4px rgba(0, 0, 0, .08);
-				overflow: hidden;
-			}
-
-			.card-head {
-				padding: 14px 18px;
-				border-bottom: 1px solid #eee;
-				display: flex;
-				justify-content: space-between;
-				align-items: center;
-			}
-
-			.card-head h2 {
-				font-size: 15px;
-				font-weight: 600;
-				color: #333;
-			}
-
-			.card-body {
-				padding: 18px;
-			}
-
-			/* Scanner */
-			#scannerView {
-				width: 100%;
-				height: 280px;
-				background: #000;
-				border-radius: 6px;
-				position: relative;
-				overflow: hidden;
-				display: none;
-			}
-
-			#scannerView video {
-				width: 100%;
-				height: 100%;
-				object-fit: cover;
-			}
-
-			#scannerView .reticle {
-				position: absolute;
-				top: 50%;
-				left: 50%;
-				width: 70%;
-				height: 110px;
-				transform: translate(-50%, -50%);
-				border: 2px solid #e42527;
-				border-radius: 8px;
-				box-shadow: 0 0 0 2000px rgba(0, 0, 0, .45);
-			}
-
-			.btn {
-				border: none;
-				border-radius: 6px;
-				padding: 10px 18px;
-				cursor: pointer;
-				font-size: 14px;
-				font-weight: 600;
-				transition: .15s;
-			}
-
-			.btn-red {
-				background: #e42527;
-				color: #fff;
-			}
-
-			.btn-red:hover {
-				background: #c01e20;
-			}
-
-			.btn-green {
-				background: #1a9c5d;
-				color: #fff;
-			}
-
-			.btn-green:hover {
-				background: #15854e;
-			}
-
-			.btn-gray {
-				background: #eef1f4;
-				color: #555;
-			}
-
-			.btn-gray:hover {
-				background: #dde3e9;
-			}
-
-			.btn-block {
-				width: 100%;
-			}
-
-			.scan-input {
-				display: flex;
-				gap: 8px;
-				margin-top: 12px;
-			}
-
-			.scan-input input {
-				flex: 1;
-				padding: 10px 12px;
-				border: 1px solid #d5dbe1;
-				border-radius: 6px;
-				font-size: 14px;
-			}
-
-			/* Inventory table */
-			table {
-				width: 100%;
-				border-collapse: collapse;
-				font-size: 13px;
-			}
-
-			th {
-				background: #f8f9fa;
-				text-align: left;
-				padding: 10px 12px;
-				color: #666;
-				font-weight: 600;
-				border-bottom: 2px solid #e8ecef;
-			}
-
-			td {
-				padding: 10px 12px;
-				border-bottom: 1px solid #f0f2f4;
-			}
-
-			tr:hover td {
-				background: #fafbfc;
-			}
-
-			.stock-badge {
-				padding: 3px 10px;
-				border-radius: 12px;
-				font-size: 12px;
-				font-weight: 600;
-			}
-
-			.ok {
-				background: #e3f6ec;
-				color: #1a9c5d;
-			}
-
-			.low {
-				background: #fff3e0;
-				color: #e67e22;
-			}
-
-			.out {
-				background: #fdeaea;
-				color: #e42527;
-			}
-
-			/* Cart */
-			.cart-item {
-				display: flex;
-				justify-content: space-between;
-				align-items: center;
-				padding: 10px 0;
-				border-bottom: 1px solid #f0f2f4;
-				font-size: 14px;
-			}
-
-			.cart-item .qty {
-				background: #eef1f4;
-				border-radius: 4px;
-				padding: 2px 8px;
-				margin: 0 6px;
-				font-weight: 600;
-			}
-
-			.cart-item button {
-				background: #fdeaea;
-				color: #e42527;
-				border: none;
-				border-radius: 4px;
-				width: 24px;
-				height: 24px;
-				cursor: pointer;
-				font-weight: bold;
-			}
-
-			.totals {
-				padding: 14px 18px;
-				background: #f8f9fa;
-				border-top: 1px solid #eee;
-				font-size: 14px;
-			}
-
-			.totals .row {
-				display: flex;
-				justify-content: space-between;
-				margin-bottom: 6px;
-			}
-
-			.totals .row.grand {
-				font-size: 18px;
-				font-weight: 700;
-				color: #e42527;
-				border-top: 1px dashed #ddd;
-				padding-top: 8px;
-			}
-
-			.toast {
-				position: fixed;
-				bottom: 24px;
-				right: 24px;
-				background: #2c3e50;
-				color: #fff;
-				padding: 12px 20px;
-				border-radius: 8px;
-				font-size: 14px;
-				opacity: 0;
-				transition: .3s;
-				z-index: 99;
-			}
-
-			.toast.show {
-				opacity: 1;
-			}
-
-			.toast.err {
-				background: #e42527;
-			}
-
-			.empty {
-				text-align: center;
-				color: #999;
-				padding: 30px;
-				font-size: 14px;
-			}
-
-			.lowstock-alert {
-				background: #fff3e0;
-				border-left: 4px solid #e67e22;
-				padding: 10px 14px;
-				font-size: 13px;
-				margin-bottom: 12px;
-				display: none;
-			}
-
-		</style>
-	</head>
-
-	<body>
-		<div class="header">
-			<h1>ZOHO <span>POS</span></h1>
-			<div class="store-badge">📍 Store #001 · Register 1 · <span id="clock"></span></div>
-			<div style="display:flex;gap:10px;align-items:center;justify-content:right;">
-				<div class="store-badge" id="zohoBadge">⚪ Zoho: Not connected</div>
-				<button class="btn btn-gray" style="padding:6px 12px;font-size:13px" onclick="toggleSettings()">⚙ Settings</button>
-			</div>
-			
-		</div>
-		<!-- Settings Modal -->
-<div id="settingsModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center;">
-    <div class="card" style="width:420px;max-width:95%;">
-        <div class="card-head">
-            <h2>⚙ Zoho Connection</h2>
-            <button class="btn btn-gray" style="padding:4px 10px;font-size:12px" onclick="toggleSettings()">✕</button>
-
-        </div>
-        <div class="card-body">
-            <label style="font-size:12px;font-weight:600;color:#666">Region (data center</label>
-			<select id="cfgRegion" class="fld">
-				<option value="com">.com (US)</option>
-				<option value="eu">.eu (Europe)</option>
-				<option value="in">.in (India)</option>
-				<option value="com.au">.com.au (Australia)</option>
-				<option value="jp">.jp (Japan)</option>
-				<option value="sa">.sa (Saudi Arabia)</option>
-			</select>			
-
-            <label style="font-size:12px;font-weight:600;color:#666">Organization ID</label>
-            <input id="cfgOrg" class="fld" placeholder="e.g. 712345678">
-
-            <label style="font-size:12px;font-weight:600;color:#666">Client ID</label>
-            <input id="cfgClientId" class="fld" placeholder="1000.XXXXXXXXXX">
-
-            <label style="font-size:12px;font-weight:600;color:#666">Client Secret</label>
-            <input id="cfgSecret" type="password" class="fld">
-
-            <label style="font-size:12px;font-weight:600;color:#666">Refresh Token</label>
-            <input id="cfgRefresh" type="password" class="fld" placeholder="1000.XXXXXXXXX">
-
-            <br>
-            <button class="btn btn-green btn-block" onclick="saveConfig()">💾 Save & Connection</button>
-            <div id="connStatus" style="font-size:12px;margin-top:10px;text-align:center;"></div>
-        </div>
+<!-- ===== TOP NAVIGATION ===== -->
+<header class="h-14 bg-white hairline-b px-5 flex items-center justify-between shrink-0 z-30">
+  <div class="flex items-center space-x-4">
+    <div class="flex items-center space-x-2.5">
+      <div class="w-7 h-7 rounded-md bg-stone-900 text-white flex items-center justify-center font-mono text-xs font-semibold tracking-tight">◬</div>
+      <span class="font-semibold tracking-tight text-sm text-stone-900">ATELIER<span class="text-stone-400 font-normal ml-1">POS</span></span>
+      <span class="text-[11px] font-mono px-1.5 py-0.5 rounded hairline-all bg-stone-50 text-stone-500">v3.4</span>
     </div>
+    <div class="h-4 w-px bg-stone-200"></div>
+    <div class="hidden md:flex items-center space-x-2 text-xs text-stone-500 font-medium">
+      <span>Store #001 · Central Depot</span>
+      <span class="text-stone-300">/</span>
+      <span class="text-stone-700">Reg 01</span>
+    </div>
+    <div class="h-4 w-px bg-stone-200 hidden md:block"></div>
+    <!-- Zoho Connection Pill -->
+    <button class="flex items-center space-x-1.5 text-[11px] text-stone-600 font-mono hover:bg-stone-100 px-1.5 py-0.5 rounded transition" onclick="toggleSettings()" id="sync-pill">
+      <span class="relative flex h-2 w-2" id="zoho-dot-wrap">
+        <span class="status-dot-pulse absolute inline-flex h-full w-full rounded-full bg-stone-400 opacity-75" id="zoho-dot-pulse"></span>
+        <span class="relative inline-flex rounded-full h-2 w-2 bg-stone-400" id="zoho-dot"></span>
+      </span>
+      <span class="text-stone-500" id="zohoBadge">Zoho: Not connected</span>
+    </button>
+  </div>
+  <div class="flex items-center space-x-3">
+    <button class="hidden lg:flex items-center space-x-2 text-xs text-stone-400 hairline-all bg-stone-50 hover:bg-stone-100 px-2.5 py-1.5 rounded-lg transition" onclick="document.getElementById('barcode-input').focus()">
+      <i class="w-3.5 h-3.5 text-stone-400" data-lucide="search"></i>
+      <span class="text-stone-500">Quick Command</span>
+      <kbd class="font-mono text-[10px] px-1 py-0.2 hairline-all bg-white rounded text-stone-400">F1</kbd>
+    </button>
+    <div class="font-mono text-xs text-stone-600 tabular-nums px-2" id="header-clock">00:00:00</div>
+    <div class="flex items-center space-x-2 pl-2 border-l border-stone-200">
+      <div class="w-6 h-6 rounded-full bg-stone-100 text-stone-700 text-[11px] font-semibold flex items-center justify-center hairline-all">AT</div>
+      <span class="text-xs font-medium text-stone-700 hidden sm:inline">A. Taylor</span>
+    </div>
+    <button class="w-8 h-8 rounded-lg hairline-all bg-white hover:bg-stone-50 flex items-center justify-center text-stone-600 hover:text-stone-900 transition" title="Zoho Settings" onclick="toggleSettings()">
+      <i class="w-4 h-4" data-lucide="sliders-horizontal"></i>
+    </button>
+  </div>
+</header>
+
+<!-- ===== ZOHO OFFLINE/DISCONNECTED BANNER ===== -->
+<div class="hidden bg-amber-50 hairline-b px-5 py-1.5 items-center justify-between text-xs text-amber-900 font-mono" id="offline-banner">
+  <div class="flex items-center space-x-2">
+    <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+    <span class="font-medium">LOCAL CACHE MODE — Zoho not connected. Using local inventory from last sync.</span>
+  </div>
+  <button class="text-[11px] underline text-amber-800 hover:text-amber-950 font-sans" onclick="toggleSettings()">Connect Zoho</button>
 </div>
 
-<style>
-    .fld {
-        width: 100%;
-        padding: 9px 10px;
-        border: 1px solid #d5dbe1;
-        border-radius: 6px;
-        font-size: 13px;
-        margin: 4px 0 12px;
-    }
-</style>
-		
-		<div class="layout">
-			<!-- LEFT: Scanner + Inventory -->
-			<div>
-				<div class="card" style="margin-bottom:16px;">
-					<div class="card-head">
-						<h2>📷 Barcode Scanner</h2><span style="font-size:12px;color:#999">Scan to deduct stock</span>
-					</div>
-					<div class="card-body">
-						<div class="lowstock-alert" id="lowAlert"></div>
-						<div id="scannerView">
-							<div class="reticle"></div><video id="video" autoplay muted></video>
-						</div>
-						<button class="btn btn-red btn-block" id="scanBtn" onclick="toggleScanner()">▶ Start Camera Scan</button>
-						<div class="scan-input">
-							<input id="manualBarcode" placeholder="Or type / USB-scanner input: barcode + Enter" autocomplete="off">
-							<button class="btn btn-gray" onclick="manualLookup()">Lookup</button>
-						</div>
-					</div>
-				</div>
-				<div class="card">
-					<div class="card-head">
-						<h2>📦 Inventory</h2><span id="invCount" style="font-size:12px;color:#999"></span>
-					</div>
-					<div class="card-body" style="padding:0; overflow-x:auto;">
-						<table>
-							<thead>
-								<tr>
-									<th>Barcode</th>
-									<th>Item</th>
-									<th>Price</th>
-									<th>Stock</th>
-									<th>Status</th>
-								</tr>
-							</thead>
-							<tbody id="invBody"></tbody>
-						</table>
-					</div>
-				</div>
-				
-			</div>
-			<!-- RIGHT: Sale / Cart -->
-			<div>
-				<div class="card">
-					<div class="card-head">
-						<h2>🛒 Current Sale</h2><button class="btn btn-gray" style="padding:5px 12px;font-size:12px" onclick="clearCart()">Clear</button>
-					</div>
-					<div class="card-body" id="cartBody">
-						<div class="empty">Scan an item to begin</div>
-					</div>
-					<div class="totals">
-						<div class="row"><span>Items</span><span id="tQty">0</span></div>
-						<div class="row"><span>Subtotal</span><span id="tSub">₦0.00</span></div>
-						<div class="row"><span>Tax (8%)</span><span id="tTax">₦0.00</span></div>
-						<div class="row grand"><span>TOTAL</span><span id="tTotal">₦0.00</span></div>
-						<br>
-						<button class="btn btn-green btn-block" onclick="checkout()">✓ Complete Sale & Deduct Stock</button>
-					</div>
-				</div>
-				<div class="card" style="margin-top:16px;">
-					<div class="card-head">
-						<h2>🧾 Recent Transactions</h2>
-					</div>
-					<div class="card-body" id="txBody" style="font-size:13px;">
-						<div class="empty">No sales yet</div>
-					</div>
-				</div>
-			</div>
-		</div>
-		
+<!-- ===== 2-ZONE WORKSPACE ===== -->
+<div class="flex-1 flex overflow-hidden max-w-[1720px] w-full mx-auto p-3 gap-3">
 
-<style>
-    .fld {
-        width: 100%;
-        padding: 9px 10px;
-        border: 1px solid #d5dbe1;
-        border-radius: 6px;
-        font-size: 13px;
-        margin: 4px 0 12px;
-    }
-</style>
+  <!-- ZONE 1: Scanner + Inventory -->
+  <section class="flex-1 flex flex-col min-w-0 bg-white rounded-xl hairline-all overflow-hidden">
 
-		
-		<div class="toast" id="toast"></div>
-		<script>
-			/* ============ DATA (simulates Zoho Inventory backend) ============ */
-			const TAX_RATE = 0.08;
-			let inventory = JSON.parse(localStorage.getItem('zoho_pos_inv')) || [{
-				barcode: '8901234567890',
-				name: 'Organic Coffee Beans 500g',
-				price: 12.99,
-				stock: 45
-			}, {
-				barcode: '1234567890128',
-				name: 'Green Tea Pack (25 bags)',
-				price: 5.49,
-				stock: 8
-			}, {
-				barcode: '4006381333931',
-				name: 'Dark Chocolate Bar 100g',
-				price: 3.25,
-				stock: 120
-			}, {
-				barcode: '5012345678900',
-				name: 'Almond Milk 1L',
-				price: 4.75,
-				stock: 3
-			}, {
-				barcode: '012345678905',
-				name: 'Protein Bar - Choco',
-				price: 2.99,
-				stock: 60
-			}, ];
-			let cart = {};
-			let txLog = JSON.parse(localStorage.getItem('zoho_pos_tx')) || [];
-			let scanning = false;
+    <!-- Scan zone -->
+    <div class="p-3.5 hairline-b bg-white shrink-0 space-y-3">
+      <div class="flex items-center gap-2.5">
+        <div class="relative flex-1 group">
+          <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400 group-focus-within:text-cobalt-600 transition-colors">
+            <i class="w-4 h-4" data-lucide="scan-line"></i>
+          </div>
+          <input autofocus id="manualBarcode" type="text"
+            class="w-full pl-10 pr-24 py-2 text-[13px] bg-stone-50 hairline-all rounded-lg text-stone-900 placeholder:text-stone-400 font-medium focus:bg-white focus:outline-none focus:ring-1 focus:ring-cobalt-600 focus:border-cobalt-600 transition"
+            placeholder="Scan barcode or type SKU / barcode + Enter..."/>
+          <div class="absolute inset-y-0 right-2 flex items-center space-x-1.5">
+            <kbd class="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono text-stone-400 hairline-all bg-white rounded">↵ Enter</kbd>
+            <button class="px-2.5 py-1 text-xs font-medium text-stone-700 bg-white hover:bg-stone-100 hairline-all rounded transition" onclick="manualLookup()">Lookup</button>
+          </div>
+        </div>
+        <div class="hidden sm:flex items-center space-x-1.5 px-3 py-2 bg-stone-50 hairline-all rounded-lg text-xs font-mono text-stone-600">
+          <i class="w-3.5 h-3.5 text-stone-500" data-lucide="radio"></i>
+          <span class="text-[11px]">Hardware Ready</span>
+		  <!-- Ignore Stock Validation Toggle -->
+<label class="hidden md:flex items-center space-x-1.5 px-3 py-2 hairline-all rounded-lg bg-white hover:bg-stone-50 text-xs font-medium text-stone-700 cursor-pointer transition select-none">
+	<input type="checkbox" id="ignoreStockToggle" class="w-3.5 h-3.5 rounded text-cobalt-600 focus:ring-cobalt-600 focus:ring-offset-0"/>
+	<span class="flex items-center space-x-1">
+	  <i class="w-3.5 h-3.5 text-stone-400" data-lucide="shield-off"></i>
+	  <span>Ignore Stock Validation</span>
+	</span>
+  </label>
+  
+        </div>
+        <button class="flex items-center space-x-1.5 px-3 py-2 text-xs font-medium text-stone-700 hairline-all rounded-lg bg-white hover:bg-stone-50 transition" id="scanBtn" onclick="toggleScanner()">
+          <i class="w-3.5 h-3.5 text-stone-500" data-lucide="camera"></i>
+          <span class="hidden md:inline" id="scan-btn-label">Camera</span>
+        </button>
+        <button class="p-2 hairline-all rounded-lg bg-white hover:bg-stone-50 text-stone-600 transition" onclick="flashReload()" title="Re-sync catalog">
+          <i class="w-4 h-4" data-lucide="rotate-cw" id="refresh-icon"></i>
+        </button>
+      </div>
 
-			/* ============ ZOHO CONFIG (user-entered) ============ */
-const API_URL = 'http://localhost:3001'; // your proxy
+      <!-- Scanner viewport (hidden by default) -->
+      <div class="hidden relative w-full h-[280px] bg-stone-950 rounded-lg overflow-hidden" id="scannerView">
+        <div class="reticle"></div>
+        <video id="video" autoplay muted></video>
+      </div>
+
+      <!-- Last scan feedback pill -->
+      <div class="flex items-center justify-between px-3 py-1.5 bg-stone-50 hairline-all rounded-lg text-xs text-stone-600 transition" id="scanned-feedback">
+        <div class="flex items-center space-x-2.5">
+          <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-mono font-medium bg-stone-100 text-stone-500 border border-stone-200" id="fb-badge">IDLE</span>
+          <span class="font-medium text-stone-900" id="recent-item-title">Awaiting first scan…</span>
+          <span class="text-stone-400 font-mono text-[11px] tabular-nums" id="recent-item-price"></span>
+        </div>
+        <div class="flex items-center space-x-2 text-[11px] text-stone-500">
+          <span>Cart Qty: <strong class="font-mono text-stone-900" id="recent-qty-pill">0</strong></span>
+          <span class="text-stone-300">·</span>
+          <span class="text-stone-400 font-mono" id="lowstock-hint"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Inventory grid -->
+    <div class="flex-1 overflow-y-auto">
+      <table class="w-full text-left border-collapse">
+        <thead class="sticky top-0 bg-white/95 backdrop-blur hairline-b z-10 text-[11px] font-medium tracking-wider text-stone-400 uppercase">
+          <tr>
+            <th class="py-2.5 px-4 font-normal" scope="col">Barcode / SKU</th>
+            <th class="py-2.5 px-4 font-normal" scope="col">Item</th>
+            <th class="py-2.5 px-4 text-right font-normal" scope="col">Unit Price (NGN)</th>
+            <th class="py-2.5 px-4 text-center font-normal" scope="col">Available</th>
+            <th class="py-2.5 px-4 text-center font-normal" scope="col">Status</th>
+            <th class="py-2.5 px-4 text-right font-normal" scope="col">Action</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-[#f2f2ef] text-[13px] text-stone-700" id="invBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Footer status bar -->
+    <div class="h-9 hairline-t bg-stone-50/70 px-4 flex items-center justify-between text-[11px] text-stone-500 shrink-0">
+      <div class="flex items-center space-x-4">
+        <span><kbd class="font-mono text-[10px] text-stone-400 hairline-all bg-white px-1 py-0.5 rounded">F1</kbd> Barcode Search</span>
+        <span><kbd class="font-mono text-[10px] text-stone-400 hairline-all bg-white px-1 py-0.5 rounded">F12</kbd> Complete Sale</span>
+        <span><kbd class="font-mono text-[10px] text-stone-400 hairline-all bg-white px-1 py-0.5 rounded">Esc</kbd> Stop Scan</span>
+      </div>
+      <div class="font-mono text-[11px] text-stone-400"><span id="invCount">0 items</span></div>
+    </div>
+  </section>
+
+  <!-- ZONE 2: Cart / Current Sale -->
+  <section class="w-[410px] 2xl:w-[440px] flex flex-col bg-white rounded-xl hairline-all overflow-hidden shrink-0">
+    <div class="p-3.5 hairline-b bg-white shrink-0">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <span class="w-2 h-2 rounded-full bg-cobalt-600"></span>
+          <h2 class="text-sm font-semibold text-stone-900 tracking-tight">Current Ticket #10492</h2>
+        </div>
+        <button class="text-xs text-stone-500 hover:text-rose-700 transition font-medium px-1.5 py-0.5 rounded hover:bg-rose-50" onclick="clearCart()">Clear</button>
+      </div>
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-3 space-y-2" id="cartBody">
+      <div class="h-full flex flex-col items-center justify-center text-center p-6 space-y-3 my-auto">
+        <div class="w-12 h-12 rounded-full hairline-all bg-stone-50 flex items-center justify-center text-stone-400">
+          <i class="w-5 h-5 stroke-[1.5]" data-lucide="shopping-bag"></i>
+        </div>
+        <div>
+          <p class="text-xs font-semibold text-stone-800 tracking-tight">Your sale ticket is empty</p>
+          <p class="text-[11px] text-stone-400 max-w-[210px] mt-1 leading-normal">
+            Scan a barcode, type in the lookup, or select from the catalog.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="p-4 bg-stone-50 hairline-t shrink-0 space-y-3">
+      <div class="space-y-1.5 text-xs text-stone-600">
+        <div class="flex justify-between">
+          <span class="text-stone-500">Item Count</span>
+          <span class="font-mono text-[13px] tabular-nums font-medium text-stone-800" id="tQty">0 units (0 unique)</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-stone-500">Subtotal</span>
+          <span class="font-mono text-[13px] tabular-nums font-medium text-stone-800" id="tSub">₦0.00</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-stone-500 flex items-center">
+            Tax (8%)
+            <span class="ml-1 text-[10px] text-stone-400 cursor-help" title="Applied at checkout">ⓘ</span>
+          </span>
+          <span class="font-mono text-[13px] tabular-nums font-medium text-stone-800" id="tTax">₦0.00</span>
+        </div>
+      </div>
+      <div class="pt-2.5 hairline-t flex items-baseline justify-between">
+        <div>
+          <span class="text-[11px] font-medium tracking-wider uppercase text-stone-400 block">Total Due</span>
+          <span class="text-[10px] text-stone-400 font-mono">NGN (Nigerian Naira)</span>
+        </div>
+        <div class="font-mono font-medium text-2xl tracking-tight text-stone-950 tabular-nums" id="tTotal">₦0.00</div>
+      </div>
+      <button class="w-full py-3 px-4 bg-stone-900 hover:bg-cobalt-900 text-white rounded-lg text-xs font-semibold tracking-wide transition flex items-center justify-between group shadow-sm active:scale-[0.99]" id="btn-main-pay" onclick="checkout()">
+        <span class="flex items-center space-x-2">
+          <i class="w-4 h-4 text-emerald-400 group-hover:text-white transition-colors" data-lucide="check"></i>
+          <span>Complete Sale &amp; Deduct</span>
+        </span>
+        <div class="flex items-center space-x-2">
+          <span class="font-mono text-[13px] font-medium tracking-normal text-stone-200" id="btn-total-preview">₦0.00</span>
+          <kbd class="px-1.5 py-0.5 bg-stone-800 text-[10px] font-mono rounded text-stone-300 group-hover:bg-cobalt-800">F12</kbd>
+        </div>
+      </button>
+      <div class="pt-2 hairline-t flex items-center justify-between text-[11px] text-stone-500 font-mono">
+        <span class="flex items-center space-x-1.5 text-stone-600">
+          <span class="w-1.5 h-1.5 rounded-full bg-stone-300"></span>
+          <span id="lastTxLabel">Last: —</span>
+        </span>
+        <span class="text-stone-400">Zoho Sync</span>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ===== ZOHO SETTINGS MODAL ===== -->
+<div id="settingsModal" class="hidden fixed inset-0 bg-stone-950/40 backdrop-blur-xs items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-xl hairline-all w-full max-w-md overflow-hidden shadow-xl">
+    <div class="p-4 hairline-b bg-white flex items-center justify-between">
+      <div class="flex items-center space-x-2">
+        <div class="w-6 h-6 rounded-md bg-stone-900 text-white flex items-center justify-center text-xs">
+          <i class="w-3.5 h-3.5" data-lucide="plug"></i>
+        </div>
+        <h3 class="text-sm font-semibold text-stone-900">Zoho Connection</h3>
+      </div>
+      <button class="text-stone-400 hover:text-stone-700 p-1 rounded" onclick="toggleSettings()"><i class="w-4 h-4" data-lucide="x"></i></button>
+    </div>
+    <div class="p-5 space-y-3">
+      <div>
+        <label class="text-xs font-medium text-stone-600">Region (data center)</label>
+        <select id="cfgRegion" class="w-full mt-1 px-3 py-2 text-xs bg-white hairline-all rounded-md font-medium text-stone-800 focus:outline-none focus:ring-1 focus:ring-cobalt-600 transition">
+          <option value="com">.com (US)</option><option value="eu">.eu (Europe)</option>
+          <option value="in">.in (India)</option><option value="com.au">.com.au (Australia)</option>
+          <option value="jp">.jp (Japan)</option><option value="sa">.sa (Saudi Arabia)</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-xs font-medium text-stone-600">Organization ID</label>
+        <input id="cfgOrg" class="w-full mt-1 px-3 py-2 text-sm font-mono hairline-all rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-cobalt-600" placeholder="e.g. 712345678"/>
+      </div>
+      <div>
+        <label class="text-xs font-medium text-stone-600">Client ID</label>
+        <input id="cfgClientId" class="w-full mt-1 px-3 py-2 text-sm font-mono hairline-all rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-cobalt-600" placeholder="1000.XXXXXXXXXX"/>
+      </div>
+      <div>
+        <label class="text-xs font-medium text-stone-600">Client Secret</label>
+        <input id="cfgSecret" type="password" class="w-full mt-1 px-3 py-2 text-sm font-mono hairline-all rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-cobalt-600"/>
+      </div>
+      <div>
+        <label class="text-xs font-medium text-stone-600">Refresh Token</label>
+        <input id="cfgRefresh" type="password" class="w-full mt-1 px-3 py-2 text-sm font-mono hairline-all rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-cobalt-600" placeholder="1000.XXXXXXXXX"/>
+      </div>
+      <button class="w-full py-2.5 bg-stone-900 hover:bg-cobalt-900 text-white rounded-lg text-xs font-semibold tracking-wide transition flex items-center justify-center space-x-1.5" onclick="saveConfig()">
+        <i class="w-3.5 h-3.5 text-emerald-400" data-lucide="plug-zap"></i>
+        <span>Save &amp; Connect</span>
+      </button>
+      <div id="connStatus" class="text-xs text-center text-stone-500 font-mono"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TOAST ===== -->
+<div class="fixed bottom-6 right-6 z-[60] hidden max-w-sm px-4 py-2.5 rounded-lg bg-stone-900 text-white text-xs font-medium shadow-lg transition" id="toast"></div>
+
+<script>
+/* ================= DATA ================= */
+const TAX_RATE = 0.08;
+const API_URL = 'http://localhost:3001';
+let inventory = JSON.parse(localStorage.getItem('zoho_pos_inv')) || [
+  { barcode: '8901234567890', name: 'Organic Coffee Beans 500g', price: 12.99, stock: 45 },
+  { barcode: '1234567890128', name: 'Green Tea Pack (25 bags)', price: 5.49, stock: 8 },
+  { barcode: '4006381333931', name: 'Dark Chocolate Bar 100g', price: 3.25, stock: 120 },
+  { barcode: '5012345678900', name: 'Almond Milk 1L', price: 4.75, stock: 3 },
+  { barcode: '012345678905', name: 'Protein Bar - Choco', price: 2.99, stock: 60 }
+];
+let cart = {};
+let txLog = JSON.parse(localStorage.getItem('zoho_pos_tx')) || [];
 let zohoCfg = JSON.parse(localStorage.getItem('zoho_pos_cfg')) || null;
+let scanning = false;
 
+const formatNaira = (v) => '₦' + Number(v).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function isStockCheckBypassed() {
+  return document.getElementById('ignoreStockToggle').checked;
+}
+
+function saveAll() {
+  localStorage.setItem('zoho_pos_inv', JSON.stringify(inventory));
+  localStorage.setItem('zoho_pos_tx', JSON.stringify(txLog));
+}
+
+/* ================= TOAST ================= */
+function showToast(msg, isErr) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'fixed bottom-6 right-6 z-[60] max-w-sm px-4 py-2.5 rounded-lg text-xs font-medium shadow-lg transition ' +
+    (isErr ? 'bg-rose-600 text-white' : 'bg-stone-900 text-white');
+  clearTimeout(t._h);
+  t._h = setTimeout(() => t.classList.add('hidden'), 2800);
+}
+
+/* ================= SETTINGS / ZOHO ================= */
 function toggleSettings() {
-    const m = document.getElementById('settingsModal');
-    if (m.style.display === 'flex') { m.style.display = 'none'; return; }
-    if (zohoCfg) {
-        document.getElementById('cfgRegion').value = zohoCfg.region;
-        document.getElementById('cfgOrg').value = zohoCfg.org;
-        document.getElementById('cfgClientId').value = zohoCfg.clientId;
-        document.getElementById('cfgSecret').value = zohoCfg.secret;
- document.getElementById('cfgRefresh').value = zohoCfg.refresh;
-    }
-    m.style.display = 'flex';
+  const m = document.getElementById('settingsModal');
+  if (!m.classList.contains('hidden')) { m.classList.add('hidden'); return; }
+  if (zohoCfg) {
+    document.getElementById('cfgRegion').value = zohoCfg.region;
+    document.getElementById('cfgOrg').value = zohoCfg.org;
+    document.getElementById('cfgClientId').value = zohoCfg.clientId;
+    document.getElementById('cfgSecret').value = zohoCfg.secret;
+    document.getElementById('cfgRefresh').value = zohoCfg.refresh;
+  }
+  m.classList.remove('hidden'); m.classList.add('flex');
 }
 
 async function saveConfig() {
-    zohoCfg = {
-        region: document.getElementById('cfgRegion').value,
-        org: document.getElementById('cfgOrg').value.trim(),
-        clientId: document.getElementById('cfgClientId').value.trim(),
-        secret: document.getElementById('cfgSecret').value.trim(),
-        refresh: document.getElementById('cfgRefresh').value.trim()  
-
-    };
-    if (!zohoCfg.org || !zohoCfg.clientId || !zohoCfg.secret || !zohoCfg.refresh) {
-        document.getElementById('connStatus').innerHTML =
-            '<span style="color:#e42527">❌ All fields are required</span>';
-        return;
-    }
-    document.getElementById('connStatus').innerHTML = '⏳ Testing connection...';
-
+  zohoCfg = {
+    region: document.getElementById('cfgRegion').value,
+    org: document.getElementById('cfgOrg').value.trim(),
+    clientId: document.getElementById('cfgClientId').value.trim(),
+    secret: document.getElementById('cfgSecret').value.trim(),
+    refresh: document.getElementById('cfgRefresh').value.trim()
+  };
+  if (!zohoCfg.org || !zohoCfg.clientId || !zohoCfg.secret || !zohoCfg.refresh) {
+    document.getElementById('connStatus').innerHTML = '<span class="text-rose-600">All fields are required</span>';
+    return;
+  }
+  document.getElementById('connStatus').textContent = 'Testing connection…';
+  try {
     const res = await fetch(API_URL + '/api/zoho/test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(zohoCfg)
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(zohoCfg)
     });
     const data = await res.json();
-
     if (res.ok) {
-        localStorage.setItem('zoho_pos_cfg', JSON.stringify(zohoCfg));
-        document.getElementById('connStatus').innerHTML =
-            `<span style="color:#1a9c5d">✅ Connected: ${data.org_name}</span>`;
-        updateZohoBadge(true, data.org_name);
-        setTimeout(toggleSettings, 800);
-        loadZohoItems();
+      localStorage.setItem('zoho_pos_cfg', JSON.stringify(zohoCfg));
+      document.getElementById('connStatus').innerHTML = '<span class="text-emerald-600">Connected: ' + data.org_name + '</span>';
+      updateZohoBadge(true, data.org_name);
+      setTimeout(toggleSettings, 800);
+      loadZohoItems();
     } else {
-        document.getElementById('connStatus').innerHTML =
-            `<span style="color:#e42527">❌ ${data.message || 'Connection failed'}</span>`;
+      document.getElementById('connStatus').innerHTML = '<span class="text-rose-600">' + (data.message || 'Connection failed') + '</span>';
     }
+  } catch (e) {
+    document.getElementById('connStatus').innerHTML = '<span class="text-rose-600">Cannot reach server — is server.js running?</span>';
+  }
 }
 
 function updateZohoBadge(connected, name) {
-    document.getElementById('zohoBadge').textContent =
-        connected ? `🟢 Zoho: ${name}` : '⚪ Zoho: Not connected';
+  const dot = document.getElementById('zoho-dot');
+  const pulse = document.getElementById('zoho-dot-pulse');
+  const banner = document.getElementById('offline-banner');
+  if (connected) {
+    dot.className = 'relative inline-flex rounded-full h-2 w-2 bg-emerald-500';
+    pulse.className = 'status-dot-pulse absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75';
+    document.getElementById('zohoBadge').textContent = 'Zoho: ' + name;
+    banner.classList.add('hidden'); banner.classList.remove('flex');
+  } else {
+    dot.className = 'relative inline-flex rounded-full h-2 w-2 bg-stone-400';
+    pulse.className = 'status-dot-pulse absolute inline-flex h-full w-full rounded-full bg-stone-400 opacity-75';
+    document.getElementById('zohoBadge').textContent = 'Zoho: Not connected';
+    banner.classList.remove('hidden'); banner.classList.add('flex');
+  }
 }
 
-function getCfg() {
-    if (!zohoCfg) {
-        showToast('⚠️ Configure Zoho in Settings first', true);
-        toggleSettings();
-        return null;
-    }
-    return zohoCfg;
-}
-
-/* ============ LOAD ITEMS FROM ZOHO ============ */
 async function loadZohoItems() {
-    const cfg = getCfg();
-    if (!cfg) return;
-    try {
-        const res = await fetch(API_URL + '/api/zoho/items', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(cfg)
-        });
-        const data = await res.json();
-        if (!res.ok) return showToast('❌ Zoho: ' + (data.message || 'load failed'), true);
-        inventory = data;
-        saveAll();
-        renderInventory();
-        showToast('✅ Loaded ' + data.length + ' items from Zoho');
-    } catch (e) {
-        showToast('❌ Cannot reach server — is server.js running?', true);
-    }
+  if (!zohoCfg) { showToast('Configure Zoho in Settings first', true); toggleSettings(); return; }
+  try {
+    const res = await fetch(API_URL + '/api/zoho/items', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(zohoCfg)
+    });
+    const data = await res.json();
+    if (!res.ok) return showToast('Zoho: ' + (data.message || 'load failed'), true);
+    inventory = data;
+    saveAll(); renderInventory();
+    showToast('Loaded ' + data.length + ' items from Zoho');
+  } catch (e) { showToast('Cannot reach server — is server.js running?', true); }
 }
 
+/* ================= RENDER ================= */
+function renderInventory() {
+  const tb = document.getElementById('invBody');
+  tb.innerHTML = '';
+  inventory.forEach(i => {
+    const isUnavailable = i.stock <= 0;
+    let badge;
+    if (i.stock === 0) badge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-stone-100 text-stone-400">Depleted</span>';
+    else if (i.stock <= 10) badge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200">Low · ' + i.stock + '</span>';
+    else badge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-stone-100 text-stone-700">In Stock</span>';
 
-			function saveAll() {
-				localStorage.setItem('zoho_pos_inv', JSON.stringify(inventory));
-				localStorage.setItem('zoho_pos_tx', JSON.stringify(txLog));
-			}
-			/* ============ UI RENDER ============ */
-			function renderInventory() {
-    const tb = document.getElementById('invBody');
-    tb.innerHTML = inventory.map(i => {
-        const cls = i.stock === 0 ? 'out' : i.stock <= 10 ? 'low' : 'ok';
-        const lbl = i.stock === 0 ? 'OUT' : i.stock <= 10 ? 'LOW' : 'OK';
-        return `<tr>
-    <td style="font-family:monospace">${i.barcode || '—'}</td>
-    <td>${i.name}</td>
-    <td>₦${i.price.toFixed(2)}</td>
-    <td><b>${i.stock}</b></td>
-    <td><span class="stock-badge ${cls}">${lbl}</span></td>
-</tr>`;
+    const tr = document.createElement('tr');
+    tr.className = 'hover:bg-[#fbfbf9] transition-colors group';
+    tr.innerHTML = `
+      <td class="py-3 px-4 font-mono text-[12px] text-stone-500">${i.barcode || i.sku || '—'}</td>
+      <td class="py-3 px-4">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-6 h-6 rounded hairline-all bg-stone-50 flex items-center justify-center text-stone-500 shrink-0">
+            <i class="w-3.5 h-3.5" data-lucide="package"></i>
+          </div>
+        <div class="font-medium text-stone-900 ${isUnavailable ? 'text-stone-400' : ''}">${i.name}</div>
+        </div>
+      </td>
+      <td class="py-3 px-4 text-right font-mono tabular-nums text-[13px] font-medium text-stone-900 ${isUnavailable ? 'text-stone-400' : ''}">${formatNaira(i.price)}</td>
+      <td class="py-3 px-4 text-center font-mono tabular-nums text-[12px] $	{i.stock <= 10 && i.stock > 0 ? 'text-amber-700 font-semibold' : isUnavailable ? 'text-stone-400' : 'text-stone-600'}">${i.stock}</td>
+      <td="py-3 px-4 text-center">${badge}</td>
+      <td class="py-3 px-4 text-right">
+        ${isUnavailable
+          ? '<button disabled class="px-2.5 py-1 text-xs text-stone-300 cursor-not-allowed">Unavailable</button>'
+          : `<button onclick="processBarcode('${i.barcode}')" class="px-2.5 py-1 text-xs font-medium text-stone-700 bg-white hover:bg-stone-900 hover:text-white hairline-all rounded transition">+ Add</button>`}
+      </td>`;
+    tb.appendChild(tr);
+  });
+  document.getElementById('invCount').textContent = inventory.length + ' items';
+  const low = inventory.filter(i => i.stock <= 10 && i.stock > 0);
+  document.getElementById('lowstock-hint').textContent = low.length ? low.length + ' low-stock' : '';
+  lucide.createIcons();
+}
+
+function renderCart() {
+  const body = document.getElementById('cartBody');
+  const codes = Object.keys(cart);
+  if (!codes.length) {
+    body.innerHTML = `
+      <div class="h-full flex flex-col items-center justify-center text-center p-6 space-y-3 my-auto">
+        <div class="w-12 h-12 rounded-full hairline-all bg-stone-50 flex items-center justify-center text-stone-400">
+          <i class="w-5 h-5 stroke-[1.5]" data-lucide="shopping-bag"></i>
+        </div>
+        <p class="text-xs font-semibold text-stone-800 tracking-tight">Your sale ticket is empty</p>
+        <p class="text-[11px] text-stone-400 max-w-[210px] mt-1 leading-normal">Scan a barcode, type in the lookup, or select from the catalog.</p>
+      </div>`;
+  } else {
+    body.innerHTML = codes.map(code => {
+      const item = cart[code];
+      return `
+        <div class="p-2.5 bg-stone-50/70 hairline-all rounded-lg hover:bg-stone-50 transition">
+          <div class="flex items-start justify-between">
+            <div class="pr-2">
+              <div class="text-xs font-medium text-stone-900 leading-snug">${item.name}</div>
+              <div class="text-[11px] text-stone-400 font-mono tabular-nums mt-0.5">${formatNaira(item.price)} × ${item.qty}</div>
+            </div>
+                        <div class="font-mono text-xs font-medium text-stone-900 tabular-nums">${formatNaira(item.price * item.qty)}</div>
+            <button onclick="removeItem('${code}')" class="text-stone-300 hover:text-rose-600 transition text-[11px] mt-0.5" title="Remove line">
+              <i class="w-3.5 h-3.5 inline" data-lucide="trash-2"></i>
+            </button>
+          </div>
+        </div>
+        <div class="flex items-center justify-between pt-2 mt-1 hairline-t">
+          <span class="text-[10px] uppercase font-mono tracking-wider text-stone-400">Qty</span>
+          <div class="inline-flex items-center hairline-all rounded bg-white overflow-hidden text-xs">
+            <button onclick="decreaseQty('${code}')" class="px-2 py-0.5 text-stone-500 hover:bg-stone-100 hover:text-stone-900 font-mono transition">−</button>
+            <span class="px-2.5 py-0.5 font-mono font-medium text-stone-900 text-xs tabular-nums">${item.qty}</span>
+            <button onclick="increaseQty('${code}')" class="px-2 py-0.5 text-stone-500 hover:bg-stone-100 hover:text-stone-900 font-mono transition">+</button>
+          </div>
+        </div>
+      `;
     }).join('');
-    document.getElementById('invCount').textContent = inventory.length + ' items';
-    const low = inventory.filter(i => i.stock <= 10);
-    const alertBox = document.getElementById('lowAlert');
-    if (low.length) {
-        alertBox.style.display = 'block';
-        alertBox.innerHTML = '⚠️ Low stock: ' + low.map(i => i.name + ' (' + i.stock + ')').join(', ');
-    } else alertBox.style.display = 'none';
+  }
+
+  const qty = codes.reduce((s, c) => s + cart[c].qty, 0);
+  const sub = codes.reduce((sum, c) => sum + cart[c].qty * cart[c].price, 0);
+  const tax = sub * TAX_RATE;
+  const grand = sub + tax;
+
+  document.getElementById('tQty').textContent = `${qty} units (${codes.length} unique)`;
+  document.getElementById('tSub').textContent = `${formatNaira(sub)}`;
+  document.getElementById('tTax').textContent = `${formatNaira(tax)}`;
+  document.getElementById('tTotal').textContent = `${formatNaira(grand)}`;
+  document.getElementById('btn-total-preview').textContent = `${formatNaira(grand)}`;
+  lucide.createIcons();
 }
 
-			function renderCart() {
-    const body = document.getElementById('cartBody');
-    const codes = Object.keys(cart);
-
-    if (!codes.length) {
-        body.innerHTML = '<div class="empty">Scan an item to begin</div>';
-    } else {
-        body.innerHTML = codes.map(code => {
-            const item = cart[code];
-
-            return `
-                <div class="cart-item">
-                    <div>
-                        <strong>${item.name}</strong><br>
-                        <small>₦ ${item.price.toFixed(2)} each</small>
-                    </div>
-
-                    <div class="quantity-control">
-                        <button onclick="decreaseQty('${code}')">−</button>
-                        <span>${item.qty}</span>
-                        <button onclick="increaseQty('${code}')">+</button>
-                        <button class="remove-btn"
-                                onclick="removeItem('${code}')">✕</button>
-                    </div>
-                </div>
-            `;
-        }).join('');
-    }
-
-    const qty = codes.reduce((sum, code) => sum + cart[code].qty, 0);
-    const sub = codes.reduce(
-        (sum, code) => sum + cart[code].qty * cart[code].price,
-        0
-    );
-
-    const tax = sub * TAX_RATE;
-
-    document.getElementById('tQty').textContent = qty;
-    document.getElementById('tSub').textContent = '₦' + sub.toFixed(2);
-    document.getElementById('tTax').textContent = '₦' + tax.toFixed(2);
-    document.getElementById('tTotal').textContent =
-        '₦' + (sub + tax).toFixed(2);
+function renderTx() {
+  if (!txLog.length) {
+    document.getElementById('lastTxLabel').textContent = 'Last: —';
+    return;
+  }
+  const last = txLog[txLog.length - 1];
+  document.getElementById('lastTxLabel').textContent = `Last: #${last.id} (${last.id} (${formatNaira(last.total)})`;
 }
 
-			function renderTx() {
-				const b = document.getElementById('txBody');
-				if (!txLog.length) {
-					b.innerHTML = '<div class="empty">No sales yet</div>';
-					return;
-				}
-				b.innerHTML = txLog.slice(-8).reverse().map(t => 
-					`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f2f4">
-						<span>#${t.id}·${t.items} item(s)</span>
-						<b style="color:#1a9c5d;">₦ ${t.total.toFixed(2)} </b>
-					</div>`).join('');
-			}
-			/* ============ SCAN & DEDUCT LOGIC ============ */
-			function processBarcode(code) {
-    // match barcode OR sku
-    const item = inventory.find(i => i.barcode === code || i.sku === code);
-
-    if (!item) {
-        showToast('❌ Unknown barcode: ' + code, true);
-        return;
-    }
-    if (!item.barcode) {
-        showToast(`⚠️ "${item.name}" has no SKU set in Zoho — add it to scan it`, true);
-        return;
-    }
+/* ================= SCAN & DEDUCT ================= */
+function processBarcode(code) {
+  const item = inventory.find(i => i.barcode === code || i.sku === code);
+  if (!item) {
+    showToast('Unknown barcode: ' + code, true);
+    flashFeedback('ERROR', 'No match: ' + code, '', 0);
+    return;
+  }
+  if (!item.barcode && !item.sku) {
+    showToast('"' + item.name + '" has no SKU set in Zoho — add it to scan it', true);
+    return;
+  }
+  // Stock validation — skipped when "Ignore Stock Validation" is checked
+  if (!isStockCheckBypassed()) {
     if (item.stock <= 0) {
-        showToast(`❌ "${item.name}" is OUT OF STOCK`, true);
-        return;
+      showToast('"' + item.name + '" is OUT OF STOCK', true);
+      flashFeedback('DEPLETED', item.name, formatNaira(item.price), 0);
+      return;
     }
+  }
 
-    cart[code] = cart[code] || {
-        item_id: item.item_id,
-        name: item.name,
-        price: item.price,
-        qty: 0
-    };
-    cart[code].qty++;
+  const key = item.barcode || item.sku;
+  cart[key] = cart[key] || { item_id: item.item_id, name: item.name, price: item.price, qty: 0, deducted: 0 };
+  cart[key].qty++;
+  // Only decrement local stock display if it's above 0
+  if (item.stock > 0) {
     item.stock--;
+    cart[key].deducted++;  // track what we actually took from local display
+  }
 
-    renderInventory();
-    renderCart();
-    showToast(`✅ ${item.name} — stock now ${item.stock}`);
-    if (item.stock <= 10) {
-        showToast(`⚠️ Low stock alert: ${item.name} (${item.stock} left)`, true);
-    }
+  // Display what we actually took from local display
+  flashFeedback('DETECTED', item.name + ' (' + key + ')', formatNaira(item.price), cart[key].qty);
+  renderInventory();
+  renderCart();
+  showToast(item.name + (isStockCheckBypassed() ? ' added (validation off)' : ' — stock now ' + item.stock));
+  if (!isStockCheckBypassed() && item.stock <= 10) showToast('Low stock alert: ' + item.name + ' (' + item.stock + ' left)', true);
 }
-			function increaseQty(code) {
-    const item = inventory.find(i => i.barcode === code);
-    if (!item) return;
 
-    if (item.stock <= 0) {
-        showToast(`❌ No more "${item.name}" in stock`, true);
-        return;
-    }
-
-    cart[code].qty++;
+function increaseQty(code) {
+  const item = inventory.find(i => i.barcode === code || i.sku === code);
+  if (!item || !cart[code]) return;
+  if (!isStockCheckBypassed() && item.stock <= 0) return showToast('No more "' + item.name + '" in stock', true);
+  cart[code].qty++;
+  if (item.stock > 0) {
     item.stock--;
-
-    renderInventory();
-    renderCart();
+    cart[code].deducted++;
+  }
+  flashFeedback('DETECTED', item.name + ' (' + code + ')', formatNaira(item.price), cart[code].qty);
+  renderInventory(); renderCart();
 }
+
+
+
+function flashFeedback(badge, title, price, qty) {
+  const badgeEl = document.getElementById('fb-badge');
+  badgeEl.textContent = badge;
+  badgeEl.className = 'inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-mono font-medium border ' +
+    (badge === 'DETECTED'
+      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+      : badge === 'ERROR' || badge === 'DEPLETED'
+        ? 'bg-rose-50 text-rose-700 border-rose-200'
+        : 'bg-stone-100 text-stone-500 border-stone-200');
+  document.getElementById('recent-item-title').textContent = title;
+  document.getElementById('recent-item-price').textContent = price;
+  document.getElementById('recent-qty-pill').textContent = qty;
+}
+
+
 function decreaseQty(code) {
-    const item = inventory.find(i => i.barcode === code);
-    if (!item || !cart[code]) return;
-
-    cart[code].qty--;
+  const item = inventory.find(i => i.barcode === code || i.sku === code);
+  if (!item || !cart[code]) return;
+  cart[code].qty--;
+  if (cart[code].deducted > 0) {
     item.stock++;
-
-    if (cart[code].qty <= 0) {
-        delete cart[code];
-    }
-
-    renderInventory();
-    renderCart();
+    cart[code].deducted--;
+  }
+  if (cart[code].qty <= 0) delete cart[code];
+  renderInventory(); renderCart();
 }
 
-			function removeItem(code) {
-				cart[code].qty--;
-				inventory.find(i => i.barcode === code).stock++;
-				if (cart[code].qty <= 0) delete cart[code];
-				renderInventory();
-				renderCart();
-			}
 
-			function clearCart() {
-				Object.keys(cart).forEach(c => inventory.find(i => i.barcode === c).stock += cart[c].qty);
-				cart = {};
-				renderInventory();
-				renderCart();
-			}
+function removeItem(code) {
+  const item = inventory.find(i => i.barcode === code || i.sku === code);
+  if (item && cart[code].deducted > 0) {
+    item.stock += cart[code].deducted;  // restore only what was actually deducted
+  }
+  delete cart[code];
+  renderInventory(); renderCart();
+}
 
-			async function checkout() {
-    const codes = Object.keys(cart);
-    if (!codes.length) return showToast('Cart is empty', true);
+function clearCart() {
+  Object.keys(cart).forEach(c => {
+    const item = inventory.find(i => i.barcode === c || i.sku === c);
+    if (item && cart[c].deducted > 0) item.stock += cart[c].deducted;
+  });
+  cart = {};
+  renderInventory(); renderCart();
+}
 
-    const cfg = getCfg();
-    if (!cfg) return;
 
-    const qty = codes.reduce((s, c) => s + cart[c].qty, 0);
-    const total = codes.reduce((sum, code) => sum + cart[code].qty * cart[code].price, 0) * (1 + TAX_RATE);
+/* ================= CHECKOUT ================= */
+async function checkout() {
+  const codes = Object.keys(cart);
+  if (!codes.length) return showToast('Cart is empty', true);
 
+  const qty = codes.reduce((s, c) => s + cart[c].qty, 0);
+  const total = codes.reduce((sum, c) => sum + cart[c].qty * cart[c].price, 0) * (1 + TAX_RATE);
+
+  // If Zoho is configured, push adjustment; otherwise local-only sale
+  if (zohoCfg) {
     try {
-        const res = await fetch(API_URL + '/api/zoho/adjustment', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                cfg,
-                reason: 'POS Sale',
-                line_items: codes.map(c => ({
-                    item_id: cart[c].item_id,
-                    quantity_adjusted: -cart[c].qty,
-                    name: cart[c].name
-                }))
-            })
-        });
-        const data = await res.json();
-        if (!res.ok) return showToast('❌ Zoho: ' + (data.message || 'adjustment failed'), true);
-
-        txLog.push({ id: Date.now() % 100000, items: qty, total: total });
-        cart = {};
-        saveAll();
-        renderInventory();
-        renderCart();
-        renderTx();
-        showToast('🧾 Sale completed — Inventory Adjustment created in Zoho');
-        loadZohoItems();
+      const res = await fetch(API_URL + '/api/zoho/adjustment', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cfg: zohoCfg,
+          reason: 'POS Sale',
+          line_items: codes.map(c => ({
+            item_id: cart[c].item_id,
+            quantity_adjusted: -cart[c].qty,
+            name: cart[c].name
+          }))
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) return showToast('Zoho: ' + (data.message || 'adjustment failed'), true);
     } catch (e) {
-        showToast('❌ Cannot reach server — is server.js running?', true);
+      return showToast('Cannot reach server — is server.js running?', true);
     }
+  }
+
+  txLog.push({ id: Date.now() % 100000, items: qty, total });
+  cart = {};  // deducted amounts are intentionally NOT restored — sale is final
+
+  saveAll();
+  renderInventory(); renderCart(); renderTx();
+  showToast('Sale completed — stock deducted' + (zohoCfg ? ' · Zoho adjustment created' : ' (local mode)'));
+  if (zohoCfg) loadZohoItems();
 }
 
+/* ================= MANUAL LOOKUP ================= */
+function manualLookup() {
+  const v = document.getElementById('manualBarcode').value.trim();
+  if (v) {
+    processBarcode(v);
+    document.getElementById('manualBarcode').value = '';
+  }
+}
+document.getElementById('manualBarcode').addEventListener('keydown', e => {
+  if (e.key === 'Enter') manualLookup();
+});
 
-			function manualLookup() {
-				const v = document.getElementById('manualBarcode').value.trim();
-				if (v) {
-					processBarcode(v);
-					document.getElementById('manualBarcode').value = '';
-				}
-			}
-			document.getElementById('manualBarcode').addEventListener('keydown', e => {
-				if (e.key === 'Enter') manualLookup();
-			});
-			/* ============ CAMERA SCANNER (QuaggaJS) ============ */
-			function toggleScanner() {
-				scanning ? stopScanner() : startScanner();
-			}
-			function startScanner() {
-    const scannerView = document.getElementById('scannerView');
-    const scanBtn = document.getElementById('scanBtn');
+/* ================= CAMERA SCANNER (QuaggaJS) ================= */
+function toggleScanner() { scanning ? stopScanner() : startScanner(); }
 
-    scannerView.style.display = 'block';
-    scanBtn.textContent = '⏹ Stop Camera Scan';
-    scanning = true;
+function startScanner() {
+  const scannerView = document.getElementById('scannerView');
+  const label = document.getElementById('scan-btn-label');
+  scannerView.classList.remove('hidden');
+  label.textContent = 'Stop';
+  scanning = true;
 
-    Quagga.init({
-        inputStream: {
-            name: 'Live',
-            type: 'LiveStream',
-            target: scannerView,
-            constraints: {
-                facingMode: { ideal: 'environment' },
-                width: { min: 640 },
-                height: { min: 480 }
-            }
-        },
-        locator: {
-            patchSize: 'medium',
-            halfSample: true
-        },
-        numOfWorkers: navigator.hardwareConcurrency || 4,
-        decoder: {
-            readers: [
-                'ean_reader',
-                'ean_8_reader',
-                'upc_reader',
-                'code_128_reader',
-                'code_39_reader'
-            ]
-        },
-        locate: true
-    }, function(err) {
+  Quagga.init({
+    inputStream: {
+      name: 'Live', type: 'LiveStream', target: scannerView,
+      constraints: { facingMode: { ideal: 'environment' }, width: { min: 640 }, height: { min: 480 } }
+    },
+    locator: { patchSize: 'medium', halfSample: true },
+    numOfWorkers: navigator.hardwareConcurrency || 4,
+    decoder: { readers: ['ean_reader', 'ean_8_reader', 'upc_reader', 'code_128_reader', 'code_39_reader'] },
+    locate: true
+  }, function (err) {
+    if (err) {
+      console.error('Quagga error:', err);
+      showToast('Camera error: ' + err.message, true);
+      stopScanner();
+      return;
+    }
+    Quagga.start();
+  });
 
-        if (err) {
-            console.error('Quagga error:', err);
-            showToast('Camera error: ' + err.message, true);
-            stopScanner();
-            return;
-        }
-
-        console.log('Scanner initialized');
-        Quagga.start();
-    });
-
-    Quagga.offDetected();
-    Quagga.onDetected(function(data) {
-
-        if (!data || !data.codeResult) return;
-
-        const code = data.codeResult.code;
-
-        if (!code) return;
-
-        console.log('Barcode detected:', code);
-
-        stopScanner();
-        processBarcode(code);
-    });
+  Quagga.offDetected();
+  Quagga.onDetected(function (data) {
+    if (!data || !data.codeResult || !data.codeResult.code) return;
+    console.log('Barcode detected:', data.codeResult.code);
+    stopScanner();
+    processBarcode(data.codeResult.code);
+  });
 }
 
-			function stopScanner() {
-				Quagga.stop();
-				scanning = false;
-				document.getElementById('scannerView').style.display = 'none';
-				document.getElementById('scanBtn').textContent = '▶ Start Camera Scan';
-			}
-			/* ============ UTIL ============ */
-			function showToast(msg, isErr) {
-				const t = document.getElementById('toast');
-				t.textContent = msg;
-				t.className = 'toast show' + (isErr ? ' err' : '');
-				clearTimeout(t._h);
-				t._h = setTimeout(() => t.className = 'toast', 2500);
-			}
-			setInterval(() => document.getElementById('clock').textContent = new Date().toLocaleTimeString(), 1000);
-			renderInventory();
-			renderCart();
-			renderTx();
+function stopScanner() {
+  try { Quagga.stop(); } catch (e) {}
+  scanning = false;
+  document.getElementById('scannerView').classList.add('hidden');
+  document.getElementById('scan-btn-label').textContent = 'Camera';
+}
 
-			/* ============ AUTO-CONNECT ON PAGE LOAD ============ */
+/* ================= MISC ================= */
+function flashReload() {
+  const icon = document.getElementById('refresh-icon');
+  icon.classList.add('animate-spin');
+  setTimeout(() => { icon.classList.remove('animate-spin'); renderInventory(); }, 500);
+}
+
+setInterval(() => {
+  document.getElementById('header-clock').textContent = new Date().toTimeString().split(' ')[0];
+}, 1000);
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'F1') { e.preventDefault(); document.getElementById('manualBarcode').focus(); }
+  else if (e.key === 'F12') { e.preventDefault(); checkout(); }
+  else if (e.key === 'Escape') {
+    if (scanning) stopScanner();
+    const m = document.getElementById('settingsModal');
+    if (!m.classList.contains('hidden')) m.classList.add('hidden');
+  }
+});
+
+/* ================= INIT ================= */
+renderInventory();
+renderCart();
+renderTx();
+lucide.createIcons();
+
 if (zohoCfg) {
-    updateZohoBadge(true, zohoCfg.org);
-    loadZohoItems();
+  updateZohoBadge(true, zohoCfg.org);
+  loadZohoItems();
 } else {
-    showToast('⚙️ Configure Zoho connection in Settings', true);
+  updateZohoBadge(false);
+  showToast('Configure Zoho connection in Settings', true);
 }
-
-		</script>
-	</body>
-
+</script>
+</body>
 </html>
+
 
 
