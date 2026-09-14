@@ -1,0 +1,15 @@
+#accountPopover .login-transition {
+    animation: loginSlideIn 180ms ease-out;
+  }
+  
+  @keyframes loginSlideIn {
+    from {
+      opacity: 0;
+      transform: translateX(18px);
+    }
+  
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }

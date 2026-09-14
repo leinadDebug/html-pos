@@ -127,6 +127,7 @@ app.post('/api/zoho/items', async (req, res) => {
                 sku: i.sku || '',
                 barcode: i.sku || '',        // SKU only — empty string if missing
                 price: parseFloat(i.rate) || 0,
+                purchase_price: parseFloat(i.purchase_rate) || 0,
                 stock: i.stock_on_hand != null ? i.stock_on_hand : 0
             }));
 

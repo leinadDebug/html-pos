@@ -1,772 +1,2078 @@
 <!DOCTYPE html>
 <html class="h-full bg-[#f8f8f6]" lang="en">
-<head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>ATELIER POS — Zoho Inventory Terminal</title>
-<link href="https://fonts.googleapis.com" rel="preconnect"/>
-<link crossorigin href="https://fonts.gstatic.com" rel="preconnect"/>
-<link href="https://fonts.googleapis.com/css2?familyInter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<script src="https://unpkg.com/lucide@latest"></script>
-<script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
-<script data-purpose="tailwind-config">
-  tailwind.config = {
-    theme: {
-      extend: {
-        fontFamily: {
-          sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
-          mono: ['JetBrains Mono', 'Menlo', 'monospace']
-        },
-        colors: {
-          stone: {
-            50: '#fbfbf9', 100: '#f8f8f6', 200: '#eeeeeb', 300: '#e2e2dc',
-            400: '#a8a89f', 500: '#73736b', 600: '#52524d', 700: '#3f3f3b',
-            800: '#272725', 900: '#171716'
-          },
-          cobalt: {
-            500: '#2563eb', 600: '#1d4ed8', 700: '#1e3a8a', 800: '#172554', 900: '#0f172a'
-          }
-        }
-      }
-    }
-  }
-</script>
-<style>
-  ::-webkit-scrollbar { width: 4px; height: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #e2e2dc; border-radius: 9999px; }
-  ::-webkit-scrollbar-thumb:hover { background: #a8a89f; }
-  @keyframes live-pulse {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.3); opacity: 0.4; }
-  }
-  .status-dot-pulse { animation: live-pulse 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-  .hairline-b { border-bottom: 1px solid #e8e8e5; }
-  .hair-r { border-right: 1px solid #e8e8e5; }
-  .hairline-t { border-top: 1px solid #e8e8e5; }
-  .hairline-all { border: 1px solid #e8e8e5; }
-  #scannerView video { width: 100%; height: 100%; object-fit: cover; }
-  #scannerView .reticle {
-    position: absolute; top: 50%; left: 50%; width: 70%; height: 110px;
-    transform: translate(-50%, -50%); border: 2px solid #d4d4d4; border-radius: 8px;
-    box-shadow: 0 0 0 2000px rgba(0,0,0,.45); z-index: 10;
-  }
-</style>
-</head>
-<body class="h-full overflow-hidden flex flex-col font-sans bg-[#f8f8f6] text-stone-800 antialiased select-none">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+		<title>ATELIER POS — Zoho Inventory Terminal</title>
+		<link href="https://fonts.googleapis.com" rel="preconnect" />
+		<link crossorigin href="https://fonts.gstatic.com" rel="preconnect" />
+		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+		<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+		<script src="https://unpkg.com/lucide@latest"></script>
+		<script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+		<script>
+			tailwind.config = {
+				theme: {
+					extend: {
+						fontFamily: {
+							sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+							mono: ['JetBrains Mono', 'Menlo', 'monospace']
+						},
+						colors: {
+							stone: {
+								50: '#fbfbf9',
+								100: '#f8f8f6',
+								200: '#eeeeeb',
+								300: '#e2e2dc',
+								400: '#a8a89f',
+								500: '#73736b',
+								600: '#52524d',
+								700: '#3f3f3b',
+								800: '#272725',
+								900: '#171716'
+							},
+							cobalt: {
+								500: '#2563eb',
+								600: '#1d4ed8',
+								700: '#1e3a8a',
+								800: '#172554',
+								900: '#0f172a'
+							}
+						}
+					}
+				}
+			}
+		</script>
+		<style>
+			::-webkit-scrollbar { width: 4px; height: 4px; }
+			::-webkit-scrollbar-track { background: transparent; }
+			::-webkit-scrollbar-thumb { background: #e2e2dc; border-radius: 9999px; }
+			::-webkit-scrollbar-thumb:hover { background: #a8a89f; }
 
-<!-- ===== TOP NAVIGATION ===== -->
-<header class="h-14 bg-white hairline-b px-5 flex items-center justify-between shrink-0 z-30">
-  <div class="flex items-center space-x-4">
-    <div class="flex items-center space-x-2.5">
-      <div class="w-7 h-7 rounded-md bg-stone-900 text-white flex items-center justify-center font-mono text-xs font-semibold tracking-tight">◬</div>
-      <span class="font-semibold tracking-tight text-sm text-stone-900">ATELIER<span class="text-stone-400 font-normal ml-1">POS</span></span>
-      <span class="text-[11px] font-mono px-1.5 py-0.5 rounded hairline-all bg-stone-50 text-stone-500">v3.4</span>
-    </div>
-    <div class="h-4 w-px bg-stone-200"></div>
-    <div class="hidden md:flex items-center space-x-2 text-xs text-stone-500 font-medium">
-      <span>Store #001 · Central Depot</span>
-      <span class="text-stone-300">/</span>
-      <span class="text-stone-700">Reg 01</span>
-    </div>
-    <div class="h-4 w-px bg-stone-200 hidden md:block"></div>
-    <!-- Zoho Connection Pill -->
-    <button class="flex items-center space-x-1.5 text-[11px] text-stone-600 font-mono hover:bg-stone-100 px-1.5 py-0.5 rounded transition" onclick="toggleSettings()" id="sync-pill">
-      <span class="relative flex h-2 w-2" id="zoho-dot-wrap">
-        <span class="status-dot-pulse absolute inline-flex h-full w-full rounded-full bg-stone-400 opacity-75" id="zoho-dot-pulse"></span>
-        <span class="relative inline-flex rounded-full h-2 w-2 bg-stone-400" id="zoho-dot"></span>
-      </span>
-      <span class="text-stone-500" id="zohoBadge">Zoho: Not connected</span>
-    </button>
-  </div>
-  <div class="flex items-center space-x-3">
-    <button class="hidden lg:flex items-center space-x-2 text-xs text-stone-400 hairline-all bg-stone-50 hover:bg-stone-100 px-2.5 py-1.5 rounded-lg transition" onclick="document.getElementById('barcode-input').focus()">
-      <i class="w-3.5 h-3.5 text-stone-400" data-lucide="search"></i>
-      <span class="text-stone-500">Quick Command</span>
-      <kbd class="font-mono text-[10px] px-1 py-0.2 hairline-all bg-white rounded text-stone-400">F1</kbd>
-    </button>
-    <div class="font-mono text-xs text-stone-600 tabular-nums px-2" id="header-clock">00:00:00</div>
-    <div class="flex items-center space-x-2 pl-2 border-l border-stone-200">
-      <div class="w-6 h-6 rounded-full bg-stone-100 text-stone-700 text-[11px] font-semibold flex items-center justify-center hairline-all">AT</div>
-      <span class="text-xs font-medium text-stone-700 hidden sm:inline">A. Taylor</span>
-    </div>
-    <button class="w-8 h-8 rounded-lg hairline-all bg-white hover:bg-stone-50 flex items-center justify-center text-stone-600 hover:text-stone-900 transition" title="Zoho Settings" onclick="toggleSettings()">
-      <i class="w-4 h-4" data-lucide="sliders-horizontal"></i>
-    </button>
-  </div>
-</header>
+			@keyframes live-pulse {
+				0%, 100% { transform: scale(1); opacity: 1; }
+				50% { transform: scale(1.3); opacity: .4; }
+			}
 
-<!-- ===== ZOHO OFFLINE/DISCONNECTED BANNER ===== -->
-<div class="hidden bg-amber-50 hairline-b px-5 py-1.5 items-center justify-between text-xs text-amber-900 font-mono" id="offline-banner">
-  <div class="flex items-center space-x-2">
-    <span class="w-2 h-2 rounded-full bg-amber-500"></span>
-    <span class="font-medium">LOCAL CACHE MODE — Zoho not connected. Using local inventory from last sync.</span>
-  </div>
-  <button class="text-[11px] underline text-amber-800 hover:text-amber-950 font-sans" onclick="toggleSettings()">Connect Zoho</button>
-</div>
+			@keyframes pop-in {
+				from { opacity: 0; transform: scale(.9) translateY(12px); }
+				to { opacity: 1; transform: scale(1) translateY(0); }
+			}
 
-<!-- ===== 2-ZONE WORKSPACE ===== -->
-<div class="flex-1 flex overflow-hidden max-w-[1720px] w-full mx-auto p-3 gap-3">
+			@keyframes pop-out {
+				from { opacity: 1; transform: scale(1); }
+				to { opacity: 0; transform: scale(.92); }
+			}
 
-  <!-- ZONE 1: Scanner + Inventory -->
-  <section class="flex-1 flex flex-col min-w-0 bg-white rounded-xl hairline-all overflow-hidden">
+			@keyframes fade-in {
+				from { opacity: 0; }
+				to { opacity: 1; }
+			}
 
-    <!-- Scan zone -->
-    <div class="p-3.5 hairline-b bg-white shrink-0 space-y-3">
-      <div class="flex items-center gap-2.5">
-        <div class="relative flex-1 group">
-          <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400 group-focus-within:text-cobalt-600 transition-colors">
-            <i class="w-4 h-4" data-lucide="scan-line"></i>
-          </div>
-          <input autofocus id="manualBarcode" type="text"
-            class="w-full pl-10 pr-24 py-2 text-[13px] bg-stone-50 hairline-all rounded-lg text-stone-900 placeholder:text-stone-400 font-medium focus:bg-white focus:outline-none focus:ring-1 focus:ring-cobalt-600 focus:border-cobalt-600 transition"
-            placeholder="Scan barcode or type SKU / barcode + Enter..."/>
-          <div class="absolute inset-y-0 right-2 flex items-center space-x-1.5">
-            <kbd class="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono text-stone-400 hairline-all bg-white rounded">↵ Enter</kbd>
-            <button class="px-2.5 py-1 text-xs font-medium text-stone-700 bg-white hover:bg-stone-100 hairline-all rounded transition" onclick="manualLookup()">Lookup</button>
-          </div>
-        </div>
-        <div class="hidden sm:flex items-center space-x-1.5 px-3 py-2 bg-stone-50 hairline-all rounded-lg text-xs font-mono text-stone-600">
-          <i class="w-3.5 h-3.5 text-stone-500" data-lucide="radio"></i>
-          <span class="text-[11px]">Hardware Ready</span>
-		  <!-- Ignore Stock Validation Toggle -->
-<label class="hidden md:flex items-center space-x-1.5 px-3 py-2 hairline-all rounded-lg bg-white hover:bg-stone-50 text-xs font-medium text-stone-700 cursor-pointer transition select-none">
-	<input type="checkbox" id="ignoreStockToggle" class="w-3.5 h-3.5 rounded text-cobalt-600 focus:ring-cobalt-600 focus:ring-offset-0"/>
-	<span class="flex items-center space-x-1">
-	  <i class="w-3.5 h-3.5 text-stone-400" data-lucide="shield-off"></i>
-	  <span>Ignore Stock Validation</span>
-	</span>
-  </label>
-  
-        </div>
-        <button class="flex items-center space-x-1.5 px-3 py-2 text-xs font-medium text-stone-700 hairline-all rounded-lg bg-white hover:bg-stone-50 transition" id="scanBtn" onclick="toggleScanner()">
-          <i class="w-3.5 h-3.5 text-stone-500" data-lucide="camera"></i>
-          <span class="hidden md:inline" id="scan-btn-label">Camera</span>
-        </button>
-        <button class="p-2 hairline-all rounded-lg bg-white hover:bg-stone-50 text-stone-600 transition" onclick="flashReload()" title="Re-sync catalog">
-          <i class="w-4 h-4" data-lucide="rotate-cw" id="refresh-icon"></i>
-        </button>
-      </div>
+			@keyframes slide-up {
+				from { transform: translateY(100%); }
+				to { transform: translateY(0); }
+			}
 
-      <!-- Scanner viewport (hidden by default) -->
-      <div class="hidden relative w-full h-[280px] bg-stone-950 rounded-lg overflow-hidden" id="scannerView">
-        <div class="reticle"></div>
-        <video id="video" autoplay muted></video>
-      </div>
+			@keyframes slide-down {
+				from { transform: translateY(0); }
+				to { transform: translateY(100%); }
+			}
 
-      <!-- Last scan feedback pill -->
-      <div class="flex items-center justify-between px-3 py-1.5 bg-stone-50 hairline-all rounded-lg text-xs text-stone-600 transition" id="scanned-feedback">
-        <div class="flex items-center space-x-2.5">
-          <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-mono font-medium bg-stone-100 text-stone-500 border border-stone-200" id="fb-badge">IDLE</span>
-          <span class="font-medium text-stone-900" id="recent-item-title">Awaiting first scan…</span>
-          <span class="text-stone-400 font-mono text-[11px] tabular-nums" id="recent-item-price"></span>
-        </div>
-        <div class="flex items-center space-x-2 text-[11px] text-stone-500">
-          <span>Cart Qty: <strong class="font-mono text-stone-900" id="recent-qty-pill">0</strong></span>
-          <span class="text-stone-300">·</span>
-          <span class="text-stone-400 font-mono" id="lowstock-hint"></span>
-        </div>
-      </div>
-    </div>
+			@keyframes toast-in {
+				from { opacity: 0; transform: translateY(16px) scale(.95); }
+				to { opacity: 1; transform: translateY(0) scale(1); }
+			}
 
-    <!-- Inventory grid -->
-    <div class="flex-1 overflow-y-auto">
-      <table class="w-full text-left border-collapse">
-        <thead class="sticky top-0 bg-white/95 backdrop-blur hairline-b z-10 text-[11px] font-medium tracking-wider text-stone-400 uppercase">
-          <tr>
-            <th class="py-2.5 px-4 font-normal" scope="col">Barcode / SKU</th>
-            <th class="py-2.5 px-4 font-normal" scope="col">Item</th>
-            <th class="py-2.5 px-4 text-right font-normal" scope="col">Unit Price (NGN)</th>
-            <th class="py-2.5 px-4 text-center font-normal" scope="col">Available</th>
-            <th class="py-2.5 px-4 text-center font-normal" scope="col">Status</th>
-            <th class="py-2.5 px-4 text-right font-normal" scope="col">Action</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-[#f2f2ef] text-[13px] text-stone-700" id="invBody"></tbody>
-      </table>
-    </div>
+			@keyframes bounce-check {
+				0% { transform: scale(0); }
+				60% { transform: scale(1.2); }
+				100% { transform: scale(1); }
+			}
 
-    <!-- Footer status bar -->
-    <div class="h-9 hairline-t bg-stone-50/70 px-4 flex items-center justify-between text-[11px] text-stone-500 shrink-0">
-      <div class="flex items-center space-x-4">
-        <span><kbd class="font-mono text-[10px] text-stone-400 hairline-all bg-white px-1 py-0.5 rounded">F1</kbd> Barcode Search</span>
-        <span><kbd class="font-mono text-[10px] text-stone-400 hairline-all bg-white px-1 py-0.5 rounded">F12</kbd> Complete Sale</span>
-        <span><kbd class="font-mono text-[10px] text-stone-400 hairline-all bg-white px-1 py-0.5 rounded">Esc</kbd> Stop Scan</span>
-      </div>
-      <div class="font-mono text-[11px] text-stone-400"><span id="invCount">0 items</span></div>
-    </div>
-  </section>
+			.status-dot-pulse { animation: live-pulse 2.2s cubic-bezier(.4, 0, .6, 1) infinite; }
+			.pop-in { animation: pop-in .25s cubic-bezier(.2, 1.2, .4, 1) both; }
+			.pop-out { animation: pop-out .18s ease-in both; }
+			.fade-in { animation: fade-in .2s ease both; }
+			.sheet-up { animation: slide-up .3s cubic-bezier(.2, .9, .3, 1) both; }
+			.sheet-down { animation: slide-down .25s ease-in both; }
+			.toast-in { animation: toast-in .25s cubic-bezier(.2, 1.2, .4, 1) both; }
+			.bounce-check { animation: bounce-check .45s cubic-bezier(.2, 1.4, .4, 1) both; }
 
-  <!-- ZONE 2: Cart / Current Sale -->
-  <section class="w-[410px] 2xl:w-[440px] flex flex-col bg-white rounded-xl hairline-all overflow-hidden shrink-0">
-    <div class="p-3.5 hairline-b bg-white shrink-0">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center space-x-2">
-          <span class="w-2 h-2 rounded-full bg-cobalt-600"></span>
-          <h2 class="text-sm font-semibold text-stone-900 tracking-tight">Current Ticket #10492</h2>
-        </div>
-        <button class="text-xs text-stone-500 hover:text-rose-700 transition font-medium px-1.5 py-0.5 rounded hover:bg-rose-50" onclick="clearCart()">Clear</button>
-      </div>
-    </div>
+			.hairline-b { border-bottom: 1px solid #e8e8e5; }
+			.hair-r { border-right: 1px solid #e8e8e5; }
+			.hairline-t { border-top: 1px solid #e8e8e5; }
+			.hairline-all { border: 1px solid #e8e8e5; }
 
-    <div class="flex-1 overflow-y-auto p-3 space-y-2" id="cartBody">
-      <div class="h-full flex flex-col items-center justify-center text-center p-6 space-y-3 my-auto">
-        <div class="w-12 h-12 rounded-full hairline-all bg-stone-50 flex items-center justify-center text-stone-400">
-          <i class="w-5 h-5 stroke-[1.5]" data-lucide="shopping-bag"></i>
-        </div>
-        <div>
-          <p class="text-xs font-semibold text-stone-800 tracking-tight">Your sale ticket is empty</p>
-          <p class="text-[11px] text-stone-400 max-w-[210px] mt-1 leading-normal">
-            Scan a barcode, type in the lookup, or select from the catalog.
-          </p>
-        </div>
-      </div>
-    </div>
+			#scannerView video { width: 100%; height: 100%; object-fit: cover; }
+			#scannerView .reticle {
+				position: absolute; top: 50%; left: 50%; width: 70%; height: 110px;
+				transform: translate(-50%, -50%); border: 2px solid #d4d4d4; border-radius: 8px;
+				box-shadow: 0 0 0 2000px rgba(0, 0, 0, .45); z-index: 10;
+			}
 
-    <div class="p-4 bg-stone-50 hairline-t shrink-0 space-y-3">
-      <div class="space-y-1.5 text-xs text-stone-600">
-        <div class="flex justify-between">
-          <span class="text-stone-500">Item Count</span>
-          <span class="font-mono text-[13px] tabular-nums font-medium text-stone-800" id="tQty">0 units (0 unique)</span>
-        </div>
-        <div class="flex justify-between">
-          <span class="text-stone-500">Subtotal</span>
-          <span class="font-mono text-[13px] tabular-nums font-medium text-stone-800" id="tSub">₦0.00</span>
-        </div>
-        <div class="flex justify-between items-center">
-          <span class="text-stone-500 flex items-center">
-            Tax (8%)
-            <span class="ml-1 text-[10px] text-stone-400 cursor-help" title="Applied at checkout">ⓘ</span>
-          </span>
-          <span class="font-mono text-[13px] tabular-nums font-medium text-stone-800" id="tTax">₦0.00</span>
-        </div>
-      </div>
-      <div class="pt-2.5 hairline-t flex items-baseline justify-between">
-        <div>
-          <span class="text-[11px] font-medium tracking-wider uppercase text-stone-400 block">Total Due</span>
-          <span class="text-[10px] text-stone-400 font-mono">NGN (Nigerian Naira)</span>
-        </div>
-        <div class="font-mono font-medium text-2xl tracking-tight text-stone-950 tabular-nums" id="tTotal">₦0.00</div>
-      </div>
-      <button class="w-full py-3 px-4 bg-stone-900 hover:bg-cobalt-900 text-white rounded-lg text-xs font-semibold tracking-wide transition flex items-center justify-between group shadow-sm active:scale-[0.99]" id="btn-main-pay" onclick="checkout()">
-        <span class="flex items-center space-x-2">
-          <i class="w-4 h-4 text-emerald-400 group-hover:text-white transition-colors" data-lucide="check"></i>
-          <span>Complete Sale &amp; Deduct</span>
-        </span>
-        <div class="flex items-center space-x-2">
-          <span class="font-mono text-[13px] font-medium tracking-normal text-stone-200" id="btn-total-preview">₦0.00</span>
-          <kbd class="px-1.5 py-0.5 bg-stone-800 text-[10px] font-mono rounded text-stone-300 group-hover:bg-cobalt-800">F12</kbd>
-        </div>
-      </button>
-      <div class="pt-2 hairline-t flex items-center justify-between text-[11px] text-stone-500 font-mono">
-        <span class="flex items-center space-x-1.5 text-stone-600">
-          <span class="w-1.5 h-1.5 rounded-full bg-stone-300"></span>
-          <span id="lastTxLabel">Last: —</span>
-        </span>
-        <span class="text-stone-400">Zoho Sync</span>
-      </div>
-    </div>
-  </section>
-</div>
+			#cartSheet { transition: transform .3s cubic-bezier(.2, .9, .3, 1); }
+			.pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+			
+			.role-badge {
+				display: inline-flex;
+				align-items: center;
+				padding: 0.25rem 0.75rem;
+				border-radius: 9999px;
+				font-size: 0.75rem;
+				font-weight: 600;
+				text-transform: uppercase;
+				letter-spacing: 0.025em;
+			}
+			
+			.role-owner { background-color: #fef3c7; color: #92400e; }
+			.role-admin { background-color: #dbeafe; color: #1e40af; }
+			.role-manager { background-color: #d1fae5; color: #065f46; }
+			.role-cashier { background-color: #f3e8ff; color: #5b21b6; }
+		</style>
+	</head>
 
-<!-- ===== ZOHO SETTINGS MODAL ===== -->
-<div id="settingsModal" class="hidden fixed inset-0 bg-stone-950/40 backdrop-blur-xs items-center justify-center z-50 p-4">
-  <div class="bg-white rounded-xl hairline-all w-full max-w-md overflow-hidden shadow-xl">
-    <div class="p-4 hairline-b bg-white flex items-center justify-between">
-      <div class="flex items-center space-x-2">
-        <div class="w-6 h-6 rounded-md bg-stone-900 text-white flex items-center justify-center text-xs">
-          <i class="w-3.5 h-3.5" data-lucide="plug"></i>
-        </div>
-        <h3 class="text-sm font-semibold text-stone-900">Zoho Connection</h3>
-      </div>
-      <button class="text-stone-400 hover:text-stone-700 p-1 rounded" onclick="toggleSettings()"><i class="w-4 h-4" data-lucide="x"></i></button>
-    </div>
-    <div class="p-5 space-y-3">
-      <div>
-        <label class="text-xs font-medium text-stone-600">Region (data center)</label>
-        <select id="cfgRegion" class="w-full mt-1 px-3 py-2 text-xs bg-white hairline-all rounded-md font-medium text-stone-800 focus:outline-none focus:ring-1 focus:ring-cobalt-600 transition">
-          <option value="com">.com (US)</option><option value="eu">.eu (Europe)</option>
-          <option value="in">.in (India)</option><option value="com.au">.com.au (Australia)</option>
-          <option value="jp">.jp (Japan)</option><option value="sa">.sa (Saudi Arabia)</option>
-        </select>
-      </div>
-      <div>
-        <label class="text-xs font-medium text-stone-600">Organization ID</label>
-        <input id="cfgOrg" class="w-full mt-1 px-3 py-2 text-sm font-mono hairline-all rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-cobalt-600" placeholder="e.g. 712345678"/>
-      </div>
-      <div>
-        <label class="text-xs font-medium text-stone-600">Client ID</label>
-        <input id="cfgClientId" class="w-full mt-1 px-3 py-2 text-sm font-mono hairline-all rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-cobalt-600" placeholder="1000.XXXXXXXXXX"/>
-      </div>
-      <div>
-        <label class="text-xs font-medium text-stone-600">Client Secret</label>
-        <input id="cfgSecret" type="password" class="w-full mt-1 px-3 py-2 text-sm font-mono hairline-all rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-cobalt-600"/>
-      </div>
-      <div>
-        <label class="text-xs font-medium text-stone-600">Refresh Token</label>
-        <input id="cfgRefresh" type="password" class="w-full mt-1 px-3 py-2 text-sm font-mono hairline-all rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-cobalt-600" placeholder="1000.XXXXXXXXX"/>
-      </div>
-      <button class="w-full py-2.5 bg-stone-900 hover:bg-cobalt-900 text-white rounded-lg text-xs font-semibold tracking-wide transition flex items-center justify-center space-x-1.5" onclick="saveConfig()">
-        <i class="w-3.5 h-3.5 text-emerald-400" data-lucide="plug-zap"></i>
-        <span>Save &amp; Connect</span>
-      </button>
-      <div id="connStatus" class="text-xs text-center text-stone-500 font-mono"></div>
-    </div>
-  </div>
-</div>
+	<body class="h-full font-sans bg-[#f8f8f6] text-stone-800 antialiased select-none flex flex-col md:h-full md:overflow-hidden">
+		<!-- ===== TOP NAVIGATION ===== -->
+		<header class="h-14 bg-white hairline-b px-3 sm:px-5 flex items-center justify-between shrink-0 z-30">
+			<div class="flex items-center space-x-2 sm:space-x-4 min-w-0">
+				<div class="flex items-center space-x-2 sm:space-x-2.5 shrink-0">
+					<div class="w-7 h-7 rounded-md bg-stone-900 text-white flex items-center justify-center font-mono text-xs font-semibold">◬</div>
+					<span class="font-semibold tracking-tight text-sm text-stone-900">ATELIER<span class="text-stone-400 font-normal ml-1">POS</span></span>
+					<span class="hidden sm:inline text-[11px] font-mono px-1.5 py-0.5 rounded hairline-all bg-stone-50 text-stone-500">v3.5</span>
+				</div>
+				<div class="h-4 w-px bg-stone-200 hidden lg:block"></div>
+				<!-- Authenticated header info -->
+				<div id="authHeaderInfo" class="hidden lg:flex items-center space-x-3 text-xs text-stone-600">
+					<span class="font-mono text-[10px] text-stone-400" id="storeInfo">Store #001</span>
+					<span class="text-stone-300">/</span>
+					<div class="flex items-center space-x-2">
+						<span id="userDisplayName" class="font-medium"></span>
+						<span class="text-stone-300">·</span>
+						<span id="userRole" class="role-badge"></span>
+						<span class="text-stone-300">·</span>
+						<span id="orgName" class="font-semibold"></span>
+					</div>
+				</div>
+				<!-- Zoho status -->
+				<button class="flex items-center space-x-1.5 text-[11px] text-stone-600 font-mono hover:bg-stone-100 px-1.5 py-0.5 rounded transition" onclick="AppUI.toggleSettings()" id="sync-pill">
+					<span class="relative flex h-2 w-2" id="zoho-dot-wrap">
+						<span class="status-dot-pulse absolute inline-flex h-full w-full rounded-full bg-stone-400 opacity-75" id="zoho-dot-pulse"></span>
+						<span class="relative inline-flex rounded-full h-2 w-2 bg-stone-400" id="zoho-dot"></span>
+					</span>
+					<span class="text-stone-500 hidden sm:inline" id="zohoBadge">Zoho: Not connected</span>
+					<span class="text-stone-500 sm:hidden">Zoho</span>
+				</button>
+			</div>
+			<div class="flex items-center space-x-2 sm:space-x-3">
+				<div class="font-mono text-xs text-stone-600 tabular-nums px-1" id="header-clock"> 00:00:00 </div>
+				<!-- ACCOUNT -->
+				<div class="relative pl-2 border-l border-stone-200">
+					<button type="button" onclick="AppUI.toggleAccountPopover()" class="flex items-center space-x-2 rounded-lg px-1.5 py-1 hover:bg-stone-50 transition">
+						<div id="accountAvatar" class="w-6 h-6 rounded-full bg-stone-100 text-stone-700 text-[11px] font-semibold flex items-center justify-center hairline-all">
+							<i class="w-3.5 h-3.5" data-lucide="user"></i>
+						</div>
+						<span id="accountName" class="text-xs font-medium text-stone-700 hidden sm:inline"> Sign in </span>
+						<i class="w-3 h-3 text-stone-400 hidden sm:block" data-lucide="chevron-down"></i>
+					</button>
+					<!-- ACCOUNT POPOVER -->
+					<div id="accountPopover" class="hidden absolute right-0 top-10 z-50 w-72 ease">
+						<div class="bg-white rounded-2xl border border-stone-200 shadow-xl shadow-stone-900/10 overflow-hidden">
+							
+							<!-- LOGGED OUT STATE -->
+							<div id="loggedOutView">
+								<div class="px-4 pt-4 pb-3">
+									<p class="text-sm font-semibold text-stone-900"> Welcome to ATELIER </p>
+									<p class="text-[10px] text-stone-400 mt-0.5"> Manage your workspace and sales </p>
+								</div>
+								<div class="p-1.5">
+									<button type="button" onclick="AppAuth.showLoginView()" class="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg text-left text-xs text-stone-700 hover:bg-stone-50 hover:text-stone-900 transition">
+										<i class="w-4 h-4 text-stone-500" data-lucide="log-in"></i>
+										<div>
+											<p class="font-medium"> Sign in </p>
+											<p class="text-[10px] text-stone-400"> Access your workspace </p>
+										</div>
+									</button>
+									<button type="button" onclick="AppAuth.showCreateOrganizationView()" class="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg text-left text-xs text-stone-700 hover:bg-stone-50 hover:text-stone-900 transition">
+										<i class="w-4 h-4 text-stone-500" data-lucide="building-2"></i>
+										<div>
+											<p class="font-medium"> Create organization </p>
+											<p class="text-[10px] text-stone-400"> Set up a new workspace </p>
+										</div>
+									</button>
+									<button type="button" onclick="AppAuth.showJoinOrganizationView()" class="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg text-left text-xs text-stone-700 hover:bg-stone-50 hover:text-stone-900 transition">
+										<i class="w-4 h-4 text-stone-500" data-lucide="users"></i>
+										<div>
+											<p class="font-medium"> Join organization </p>
+											<p class="text-[10px] text-stone-400"> Join an existing workspace </p>
+										</div>
+									</button>
+								</div>
+							</div>
 
-<!-- ===== TOAST ===== -->
-<div class="fixed bottom-6 right-6 z-[60] hidden max-w-sm px-4 py-2.5 rounded-lg bg-stone-900 text-white text-xs font-medium shadow-lg transition" id="toast"></div>
+							<!-- LOGGED IN STATE -->
+							<div id="loggedInView" class="hidden">
+								<div class="px-4 pt-4 pb-3">
+									<p class="text-sm font-semibold text-stone-900" id="authenticatedUserName"> User </p>
+									<p class="text-[10px] text-stone-400 mt-0.5" id="authenticatedOrgName"></p>
+								</div>
+								<div class="p-1.5 space-y-1">
+									<button type="button" onclick="AppAuth.showTeamView()" class="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg text-left text-xs text-stone-700 hover:bg-stone-50 hover:text-stone-900 transition" id="teamManagementBtn">
+										<i class="w-4 h-4 text-stone-500" data-lucide="users"></i>
+										<div>
+											<p class="font-medium"> Team </p>
+											<p class="text-[10px] text-stone-400"> Manage members </p>
+										</div>
+									</button>
+									<button type="button" onclick="AppAuth.logout()" class="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg text-left text-xs text-stone-700 hover:bg-stone-50 hover:text-stone-900 transition">
+										<i class="w-4 h-4 text-stone-500" data-lucide="log-out"></i>
+										<div>
+											<p class="font-medium"> Sign out </p>
+											<p class="text-[10px] text-stone-400"> End your session </p>
+										</div>
+									</button>
+								</div>
+							</div>
 
-<script>
-/* ================= DATA ================= */
-const TAX_RATE = 0.08;
-const API_URL = 'http://localhost:3001';
-let inventory = JSON.parse(localStorage.getItem('zoho_pos_inv')) || [
-  { barcode: '8901234567890', name: 'Organic Coffee Beans 500g', price: 12.99, stock: 45 },
-  { barcode: '1234567890128', name: 'Green Tea Pack (25 bags)', price: 5.49, stock: 8 },
-  { barcode: '4006381333931', name: 'Dark Chocolate Bar 100g', price: 3.25, stock: 120 },
-  { barcode: '5012345678900', name: 'Almond Milk 1L', price: 4.75, stock: 3 },
-  { barcode: '012345678905', name: 'Protein Bar - Choco', price: 2.99, stock: 60 }
-];
-let cart = {};
-let txLog = JSON.parse(localStorage.getItem('zoho_pos_tx')) || [];
-let zohoCfg = JSON.parse(localStorage.getItem('zoho_pos_cfg')) || null;
-let scanning = false;
+							<!-- LOGIN VIEW -->
+							<div id="loginView" class="hidden">
+								<div class="px-4 pt-3.5 pb-3">
+									<button type="button" onclick="AppAuth.showLoggedOutView()" class="flex items-center gap-1.5 text-stone-400 hover:text-stone-900 transition mb-3">
+										<i class="w-3.5 h-3.5" data-lucide="arrow-left"></i>
+										<span class="text-[10px]">Back</span>
+									</button>
+									<p class="text-sm font-semibold text-stone-900"> Sign in </p>
+									<p class="text-[10px] text-stone-400 mt-0.5"> Access your POS workspace </p>
+								</div>
+								<div class="px-4 pb-4 space-y-3">
+									<div>
+										<label class="block text-[10px] font-medium uppercase tracking-wider text-stone-400 mb-1.5"> Name </label>
+										<div class="relative">
+											<i class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" data-lucide="user-round"></i>
+											<input id="loginName" type="text" placeholder="Your name" autocomplete="username" class="w-full h-10 rounded-xl bg-stone-50 border border-stone-200 pl-9 pr-3 text-xs text-stone-900 outline-none placeholder:text-stone-300 focus:bg-white focus:border-stone-400 transition" />
+										</div>
+									</div>
+									<div>
+										<label class="block text-[10px] font-medium uppercase tracking-wider text-stone-400 mb-1.5"> Password </label>
+										<div class="relative">
+											<i class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" data-lucide="lock"></i>
+											<input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password" class="w-full h-10 rounded-xl bg-stone-50 border border-stone-200 pl-9 pr-10 text-xs text-stone-900 outline-none placeholder:text-stone-300 focus:bg-white focus:border-stone-400 transition" />
+											<button type="button" onclick="AppAuth.toggleLoginPassword()" class="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center text-stone-400 hover:text-stone-700">
+												<i id="loginPasswordIcon" class="w-3.5 h-3.5" data-lucide="eye"></i>
+											</button>
+										</div>
+									</div>
+									<div id="loginError" class="hidden flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 text-red-600 text-[10px]">
+										<i class="w-3.5 h-3.5 shrink-0" data-lucide="circle-alert"></i>
+										<span id="loginErrorText"> Invalid credentials. </span>
+									</div>
+									<button id="loginSubmit" type="button" onclick="AppAuth.handleLogin()" class="w-full h-10 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-stone-800 active:scale-[0.98] transition flex items-center justify-center gap-2">
+										<i class="w-3.5 h-3.5" data-lucide="log-in"></i> Sign in </button>
+									<div class="pt-1 text-center">
+										<p class="text-[10px] text-stone-400"> New here? <button type="button" class="text-stone-700 font-medium hover:underline" onclick="AppAuth.showCreateOrganizationView()"> Create organization </button></p>
+									</div>
+								</div>
+							</div>
 
-const formatNaira = (v) => '₦' + Number(v).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+							<!-- CREATE ORGANIZATION VIEW -->
+							<div id="createOrganizationView" class="hidden">
+								<div class="px-4 pt-3.5 pb-3">
+									<button type="button" onclick="AppAuth.showLoggedOutView()" class="flex items-center gap-1.5 text-stone-400 hover:text-stone-900 transition mb-3">
+										<i class="w-3.5 h-3.5" data-lucide="arrow-left"></i>
+										<span class="text-[10px]"> Back </span>
+									</button>
+									<p class="text-sm font-semibold text-stone-900"> Create organization </p>
+									<p class="text-[10px] text-stone-400 mt-0.5"> Set up your ATELIER workspace </p>
+								</div>
+								<div class="px-4 pb-4 space-y-3">
+									<div>
+										<label class="block text-[10px] font-medium uppercase tracking-wider text-stone-400 mb-1.5"> Organization name </label>
+										<div class="relative">
+											<i class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" data-lucide="building-2"></i>
+											<input id="organizationName" type="text" placeholder="e.g. Atelier Stores" autocomplete="organization" class="w-full h-10 rounded-xl bg-stone-50 border border-stone-200 pl-9 pr-3 text-xs text-stone-900 outline-none placeholder:text-stone-300 focus:bg-white focus:border-stone-400 transition" />
+										</div>
+									</div>
+									<div>
+										<label class="block text-[10px] font-medium uppercase tracking-wider text-stone-400 mb-1.5"> Your name </label>
+										<div class="relative">
+											<i class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" data-lucide="user-round"></i>
+											<input id="ownerName" type="text" placeholder="Your full name" autocomplete="name" class="w-full h-10 rounded-xl bg-stone-50 border border-stone-200 pl-9 pr-3 text-xs text-stone-900 outline-none placeholder:text-stone-300 focus:bg-white focus:border-stone-400 transition" />
+										</div>
+									</div>
+									<div>
+										<label class="block text-[10px] font-medium uppercase tracking-wider text-stone-400 mb-1.5"> Work email </label>
+										<div class="relative">
+											<i class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" data-lucide="mail"></i>
+											<input id="ownerEmail" type="email" placeholder="you@company.com" autocomplete="email" class="w-full h-10 rounded-xl bg-stone-50 border border-stone-200 pl-9 pr-3 text-xs text-stone-900 outline-none placeholder:text-stone-300 focus:bg-white focus:border-stone-400 transition" />
+										</div>
+									</div>
+									<div>
+										<label class="block text-[10px] font-medium uppercase tracking-wider text-stone-400 mb-1.5"> Password </label>
+										<div class="relative">
+											<i class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" data-lucide="lock"></i>
+											<input id="ownerPassword" type="password" placeholder="Create a password" autocomplete="new-password" class="w-full h-10 rounded-xl bg-stone-50 border border-stone-200 pl-9 pr-10 text-xs text-stone-900 outline-none placeholder:text-stone-300 focus:bg-white focus:border-stone-400 transition" />
+											<button type="button" onclick="AppAuth.toggleOwnerPassword()" class="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center text-stone-400 hover:text-stone-700">
+												<i id="ownerPasswordIcon" class="w-3.5 h-3.5" data-lucide="eye"></i>
+											</button>
+										</div>
+									</div>
+									<button type="button" onclick="AppAuth.handleCreateOrganization()" class="w-full h-10 rounded-xl bg-stone-900 text-white text-xs font-medium hover:bg-stone-800 active:bg-stone-950 transition flex items-center justify-center gap-2">
+										<i class="w-3.5 h-3.5" data-lucide="building-2"></i> Create organization </button>
+									<p class="text-[9px] leading-relaxed text-stone-400 text-center"> You'll become the owner. </p>
+								</div>
+							</div>
 
-function isStockCheckBypassed() {
-  return document.getElementById('ignoreStockToggle').checked;
-}
+							<!-- JOIN ORGANIZATION VIEW -->
+							<div id="joinOrganizationView" class="hidden">
+								<div class="px-4 pt-3.5 pb-3">
+									<button type="button" onclick="AppAuth.showLoggedOutView()" class="flex items-center gap-1.5 text-[10px] text-stone-400 hover:text-stone-700 transition mb-3">
+										<i class="w-3.5 h-3.5" data-lucide="arrow-left"></i>
+										<span>Back</span>
+									</button>
+									<p class="text-sm font-semibold text-stone-900"> Join organization </p>
+									<p class="text-[10px] text-stone-400 mt-0.5"> Join an existing ATELIER workspace </p>
+								</div>
+								<div class="px-4 pb-4 space-y-2.5">
+									<div class="p-3 rounded-xl border border-stone-200 bg-stone-50/60">
+										<div class="flex items-start gap-2.5">
+											<div class="w-7 h-7 rounded-lg bg-white border border-stone-200 flex items-center justify-center shrink-0">
+												<i class="w-3.5 h-3.5 text-stone-600" data-lucide="mail"></i>
+											</div>
+											<div>
+												<p class="text-xs font-medium text-stone-800"> Have an invitation? </p>
+												<p class="text-[10px] text-stone-400 mt-0.5"> Enter your invitation code to join. </p>
+											</div>
+										</div>
+										<input id="invitationCode" type="text" placeholder="Invitation code" class="w-full mt-3 px-3 py-2 rounded-lg border border-stone-200 bg-white text-xs outline-none focus:border-stone-400" />
+										<button type="button" onclick="AppAuth.handleJoinWithInvitation()" class="w-full mt-2 py-2.5 rounded-lg bg-stone-900 text-white text-xs font-medium hover:bg-stone-800 transition"> Accept invitation </button>
+									</div>
+									<div class="relative flex items-center gap-2 py-1">
+										<div class="h-px bg-stone-200 flex-1"></div>
+										<span class="text-[9px] uppercase tracking-wider text-stone-300"> or </span>
+										<div class="h-px bg-stone-200 flex-1"></div>
+									</div>
+									<div>
+										<label class="block text-[10px] font-medium text-stone-600 mb-1.5"> Organization code </label>
+										<input id="organizationCode" type="text" placeholder="e.g. ATELIER-4821" class="w-full px-3 py-2.5 rounded-lg border border-stone-200 bg-white text-xs outline-none focus:border-stone-400" />
+									</div>
+									<button type="button" onclick="AppAuth.handleJoinWithOrganizationCode()" class="w-full py-2.5 rounded-lg border border-stone-200 text-stone-800 text-xs font-medium hover:bg-stone-50 transition"> Request to join </button>
+									<p class="text-[9px] leading-relaxed text-stone-400 text-center pt-1"> Ask your admin for an invitation code. </p>
+								</div>
+							</div>
 
-function saveAll() {
-  localStorage.setItem('zoho_pos_inv', JSON.stringify(inventory));
-  localStorage.setItem('zoho_pos_tx', JSON.stringify(txLog));
-}
+							<!-- TEAM MANAGEMENT VIEW (Owner/Admin only) -->
+							<div id="teamView" class="hidden">
+								<div class="px-4 pt-3.5 pb-3">
+									<button type="button" onclick="AppAuth.showLoggedInView()" class="flex items-center gap-1.5 text-[10px] text-stone-400 hover:text-stone-700 transition mb-3">
+										<i class="w-3.5 h-3.5" data-lucide="arrow-left"></i>
+										<span>Back</span>
+									</button>
+									<div class="flex items-center justify-between">
+										<div>
+											<p class="text-sm font-semibold text-stone-900"> Team </p>
+											<p id="teamOrgName" class="text-[10px] text-stone-400 mt-0.5"> Your organization </p>
+										</div>
+										<button type="button" onclick="AppAuth.showInviteStaffView()" class="w-8 h-8 rounded-lg bg-stone-900 text-white flex items-center justify-center hover:bg-stone-800 transition" title="Invite staff">
+											<i class="w-4 h-4" data-lucide="user-plus"></i>
+										</button>
+									</div>
+								</div>
+								<div class="px-4 pb-4">
+									<div id="teamMembersList" class="space-y-1.5"></div>
+									<div id="pendingInvitationsSection" class="hidden mt-4">
+										<div class="flex items-center justify-between mb-2">
+											<p class="text-[10px] font-semibold uppercase tracking-wider text-stone-400"> Pending invitations </p>
+											<span id="pendingInvitationCount" class="text-[9px] px-1.5 py-0.5 rounded-full bg-stone-100 text-stone-500"> 0 </span>
+										</div>
+										<div id="pendingInvitationsList" class="space-y-1.5"></div>
+									</div>
+								</div>
+							</div>
 
-/* ================= TOAST ================= */
-function showToast(msg, isErr) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'fixed bottom-6 right-6 z-[60] max-w-sm px-4 py-2.5 rounded-lg text-xs font-medium shadow-lg transition ' +
-    (isErr ? 'bg-rose-600 text-white' : 'bg-stone-900 text-white');
-  clearTimeout(t._h);
-  t._h = setTimeout(() => t.classList.add('hidden'), 2800);
-}
+							<!-- INVITE STAFF VIEW -->
+							<div id="inviteStaffView" class="hidden">
+								<div class="px-4 pt-3.5 pb-3">
+									<button type="button" onclick="AppAuth.showTeamView()" class="flex items-center gap-1.5 text-[10px] text-stone-400 hover:text-stone-700 transition mb-3">
+										<i class="w-3.5 h-3.5" data-lucide="arrow-left"></i>
+										<span>Back</span>
+									</button>
+									<p class="text-sm font-semibold text-stone-900"> Invite staff </p>
+									<p class="text-[10px] text-stone-400 mt-0.5"> Add someone to your organization </p>
+								</div>
+								<div class="px-4 pb-4 space-y-3">
+									<div>
+										<label class="block text-[10px] font-medium text-stone-600 mb-1.5"> Name </label>
+										<input id="inviteStaffName" type="text" placeholder="e.g. Jane Doe" class="w-full px-3 py-2.5 rounded-lg border border-stone-200 bg-white text-xs outline-none focus:border-stone-400" />
+									</div>
+									<div>
+										<label class="block text-[10px] font-medium text-stone-600 mb-1.5"> Work email </label>
+										<input id="inviteStaffEmail" type="email" placeholder="jane@company.com" class="w-full px-3 py-2.5 rounded-lg border border-stone-200 bg-white text-xs outline-none focus:border-stone-400" />
+									</div>
+									<div>
+										<label class="block text-[10px] font-medium text-stone-600 mb-1.5"> Role </label>
+										<select id="inviteStaffRole" class="w-full px-3 py-2.5 rounded-lg border border-stone-200 bg-white text-xs outline-none focus:border-stone-400">
+											<option value="cashier">Cashier</option>
+											<option value="manager">Manager</option>
+											<option value="admin">Admin</option>
+										</select>
+									</div>
+									<div class="p-3 rounded-xl bg-stone-50 border border-stone-200">
+										<div class="flex items-start gap-2.5">
+											<i class="w-4 h-4 text-stone-400 mt-0.5" data-lucide="shield-check"></i>
+											<p class="text-[10px] leading-relaxed text-stone-500"> The selected role determines permissions. You can change roles later. </p>
+										</div>
+									</div>
+									<button type="button" onclick="AppAuth.handleSendStaffInvitation()" class="w-full py-2.5 rounded-lg bg-stone-900 text-white text-xs font-medium hover:bg-stone-800 transition"> Send invitation </button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<!-- SETTINGS -->
+				<button class="w-8 h-8 rounded-lg hairline-all bg-white hover:bg-stone-50 flex items-center justify-center text-stone-600 hover:text-stone-900 transition" title="Zoho Settings" onclick="AppUI.toggleSettings()">
+					<i class="w-4 h-4" data-lucide="sliders-horizontal"></i>
+				</button>
+			</div>
+		</header>
 
-/* ================= SETTINGS / ZOHO ================= */
-function toggleSettings() {
-  const m = document.getElementById('settingsModal');
-  if (!m.classList.contains('hidden')) { m.classList.add('hidden'); return; }
-  if (zohoCfg) {
-    document.getElementById('cfgRegion').value = zohoCfg.region;
-    document.getElementById('cfgOrg').value = zohoCfg.org;
-    document.getElementById('cfgClientId').value = zohoCfg.clientId;
-    document.getElementById('cfgSecret').value = zohoCfg.secret;
-    document.getElementById('cfgRefresh').value = zohoCfg.refresh;
-  }
-  m.classList.remove('hidden'); m.classList.add('flex');
-}
+		<!-- ===== OFFLINE BANNER ===== -->
+		<div class="hidden bg-amber-50 hairline-b px-4 py-1.5 items-center justify-between text-xs text-amber-900 font-mono" id="offline-banner">
+			<div class="flex items-center space-x-2 min-w-0">
+				<span class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+				<span class="font-medium truncate">LOCAL CACHE MODE — Zoho not connected.</span>
+			</div>
+			<button class="text-[11px] underline text-amber-800 hover:text-amber-950 font-sans shrink-0" onclick="AppUI.toggleSettings()">Connect</button>
+		</div>
 
-async function saveConfig() {
-  zohoCfg = {
-    region: document.getElementById('cfgRegion').value,
-    org: document.getElementById('cfgOrg').value.trim(),
-    clientId: document.getElementById('cfgClientId').value.trim(),
-    secret: document.getElementById('cfgSecret').value.trim(),
-    refresh: document.getElementById('cfgRefresh').value.trim()
-  };
-  if (!zohoCfg.org || !zohoCfg.clientId || !zohoCfg.secret || !zohoCfg.refresh) {
-    document.getElementById('connStatus').innerHTML = '<span class="text-rose-600">All fields are required</span>';
-    return;
-  }
-  document.getElementById('connStatus').textContent = 'Testing connection…';
-  try {
-    const res = await fetch(API_URL + '/api/zoho/test', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(zohoCfg)
-    });
-    const data = await res.json();
-    if (res.ok) {
-      localStorage.setItem('zoho_pos_cfg', JSON.stringify(zohoCfg));
-      document.getElementById('connStatus').innerHTML = '<span class="text-emerald-600">Connected: ' + data.org_name + '</span>';
-      updateZohoBadge(true, data.org_name);
-      setTimeout(toggleSettings, 800);
-      loadZohoItems();
-    } else {
-      document.getElementById('connStatus').innerHTML = '<span class="text-rose-600">' + (data.message || 'Connection failed') + '</span>';
-    }
-  } catch (e) {
-    document.getElementById('connStatus').innerHTML = '<span class="text-rose-600">Cannot reach server — is server.js running?</span>';
-  }
-}
+		<!-- ===== WORKSPACE ===== -->
+		<div class="flex-1 flex overflow-hidden max-w-[1720px] w-full mx-auto md:p-3 gap-3" id="mainWorkspace">
+			<!-- ZONE 1: Scanner + Inventory -->
+			<section class="flex-1 flex flex-col min-w-0 bg-white md:rounded-xl hairline-all overflow-hidden">
+				<!-- Scan zone -->
+				<div class="p-3 sm:p-3.5 hairline-b bg-white shrink-0 space-y-3">
+					<div class="flex items-center gap-2">
+						<div class="relative flex-1 group min-w-0">
+							<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-stone-400 group-focus-within:text-cobalt-600 transition-colors">
+								<i class="w-4 h-4" data-lucide="scan-line"></i>
+							</div>
+							<input id="manualBarcode" type="text" inputmode="search" enterkeyhint="search" class="w-full pl-9 pr-20 py-2.5 text-[13px] bg-stone-50 hairline-all rounded-lg text-stone-900 placeholder:text-stone-400 font-medium focus:bg-white focus:outline-none focus:ring-1 focus:ring-cobalt-600 focus:border-cobalt-600 transition" placeholder="Scan barcode / SKU + Enter" />
+							<div class="absolute inset-y-0 right-1.5 flex items-center space-x-1.5">
+								<button class="px-2.5 py-1.5 text-xs font-medium text-stone-700 bg-white hover:bg-stone-100 hairline-all rounded transition" onclick="AppPOS.manualLookup()">Lookup</button>
+							</div>
+						</div>
+						<button class="flex items-center space-x-1.5 px-3 py-2.5 text-xs font-medium text-stone-700 hairline-all rounded-lg bg-white hover:bg-stone-50 transition shrink-0" id="scanBtn" onclick="AppScanner.toggle()">
+							<i class="w-4 h-4 text-stone-500" data-lucide="camera"></i>
+							<span class="hidden md:inline" id="scan-btn-label">Camera</span>
+						</button>
+						<button class="p-2.5 hairline-all rounded-lg bg-white hover:bg-stone-50 text-stone-600 transition shrink-0" onclick="AppPOS.flashReload()" title="Re-sync catalog">
+							<i class="w-4 h-4" data-lucide="rotate-cw" id="refresh-icon"></i>
+						</button>
+					</div>
 
-function updateZohoBadge(connected, name) {
-  const dot = document.getElementById('zoho-dot');
-  const pulse = document.getElementById('zoho-dot-pulse');
-  const banner = document.getElementById('offline-banner');
-  if (connected) {
-    dot.className = 'relative inline-flex rounded-full h-2 w-2 bg-emerald-500';
-    pulse.className = 'status-dot-pulse absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75';
-    document.getElementById('zohoBadge').textContent = 'Zoho: ' + name;
-    banner.classList.add('hidden'); banner.classList.remove('flex');
-  } else {
-    dot.className = 'relative inline-flex rounded-full h-2 w-2 bg-stone-400';
-    pulse.className = 'status-dot-pulse absolute inline-flex h-full w-full rounded-full bg-stone-400 opacity-75';
-    document.getElementById('zohoBadge').textContent = 'Zoho: Not connected';
-    banner.classList.remove('hidden'); banner.classList.add('flex');
-  }
-}
+					<div class="flex items-center justify-between gap-2">
+						<label class="flex items-center space-x-2 px-3 py-2 hairline-all rounded-lg bg-white hover:bg-stone-50 text-xs font-medium text-stone-700 cursor-pointer transition select-none" id="stockValidationControl">
+							<input type="checkbox" id="ignoreStockToggle" class="w-4 h-4 rounded text-cobalt-600 focus:ring-cobalt-600 focus:ring-offset-0" />
+							<span class="flex items-center space-x-1.5">
+								<i class="w-3.5 h-3.5 text-stone-400" data-lucide="shield-off"></i>
+								<span>Ignore Stock Validation</span>
+							</span>
+						</label>
+						<div class="hidden sm:flex items-center space-x-1.5 px-3 py-2 bg-stone-50 hairline-all rounded-lg text-xs font-mono text-stone-600 shrink-0">
+							<i class="w-3.5 h-3.5 text-stone-500" data-lucide="radio"></i>
+							<span class="text-[11px]">Hardware Ready</span>
+						</div>
+						<div class="flex sm:hidden items-center px-2.5 py-2 bg-stone-50 hairline-all rounded-lg text-[11px] font-mono text-stone-500">
+							<span id="invCountMobile">0 items</span>
+						</div>
+					</div>
 
-async function loadZohoItems() {
-  if (!zohoCfg) { showToast('Configure Zoho in Settings first', true); toggleSettings(); return; }
-  try {
-    const res = await fetch(API_URL + '/api/zoho/items', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(zohoCfg)
-    });
-    const data = await res.json();
-    if (!res.ok) return showToast('Zoho: ' + (data.message || 'load failed'), true);
-    inventory = data;
-    saveAll(); renderInventory();
-    showToast('Loaded ' + data.length + ' items from Zoho');
-  } catch (e) { showToast('Cannot reach server — is server.js running?', true); }
-}
+					<!-- Scanner viewport -->
+					<div class="hidden relative w-full h-[240px] sm:h-[280px] bg-stone-950 rounded-lg overflow-hidden" id="scannerView">
+						<div class="reticle"></div>
+						<video id="video" autoplay muted playsinline></video>
+						<button class="absolute top-2 right-2 z-20 px-3 py-1.5 rounded-lg bg-white/90 text-xs font-medium text-stone-800" onclick="AppScanner.stop()">Stop</button>
+					</div>
 
-/* ================= RENDER ================= */
-function renderInventory() {
-  const tb = document.getElementById('invBody');
-  tb.innerHTML = '';
-  inventory.forEach(i => {
-    const isUnavailable = i.stock <= 0;
-    let badge;
-    if (i.stock === 0) badge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-stone-100 text-stone-400">Depleted</span>';
-    else if (i.stock <= 10) badge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200">Low · ' + i.stock + '</span>';
-    else badge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-stone-100 text-stone-700">In Stock</span>';
+					<!-- Last scan feedback pill -->
+					<div class="flex items-center justify-between px-3 py-1.5 bg-stone-50 hairline-all rounded-lg text-xs text-stone-600 transition" id="scanned-feedback">
+						<div class="flex items-center space-x-2.5 min-w-0">
+							<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-stone-100 text-stone-500 border border-stone-200 shrink-0" id="fb-badge">IDLE</span>
+							<span class="font-medium text-stone-900 truncate" id="recent-item-title">Awaiting first scan…</span>
+							<span class="text-stone-400 font-mono text-[11px] tabular-nums shrink-0" id="recent-item-price"></span>
+						</div>
+						<div class="hidden sm:flex items-center space-x-2 text-[11px] text-stone-500 shrink-0">
+							<span>Cart Qty: <strong class="font-mono text-stone-900" id="recent-qty-pill">0</strong></span>
+							<span class="text-stone-300">·</span>
+							<span class="text-stone-400 font-mono" id="lowstock-hint"></span>
+						</div>
+					</div>
+				</div>
 
-    const tr = document.createElement('tr');
-    tr.className = 'hover:bg-[#fbfbf9] transition-colors group';
-    tr.innerHTML = `
-      <td class="py-3 px-4 font-mono text-[12px] text-stone-500">${i.barcode || i.sku || '—'}</td>
-      <td class="py-3 px-4">
-        <div class="flex items-center space-x-2.5">
-          <div class="w-6 h-6 rounded hairline-all bg-stone-50 flex items-center justify-center text-stone-500 shrink-0">
-            <i class="w-3.5 h-3.5" data-lucide="package"></i>
-          </div>
-        <div class="font-medium text-stone-900 ${isUnavailable ? 'text-stone-400' : ''}">${i.name}</div>
-        </div>
-      </td>
-      <td class="py-3 px-4 text-right font-mono tabular-nums text-[13px] font-medium text-stone-900 ${isUnavailable ? 'text-stone-400' : ''}">${formatNaira(i.price)}</td>
-      <td class="py-3 px-4 text-center font-mono tabular-nums text-[12px] $	{i.stock <= 10 && i.stock > 0 ? 'text-amber-700 font-semibold' : isUnavailable ? 'text-stone-400' : 'text-stone-600'}">${i.stock}</td>
-      <td="py-3 px-4 text-center">${badge}</td>
-      <td class="py-3 px-4 text-right">
-        ${isUnavailable
-          ? '<button disabled class="px-2.5 py-1 text-xs text-stone-300 cursor-not-allowed">Unavailable</button>'
-          : `<button onclick="processBarcode('${i.barcode}')" class="px-2.5 py-1 text-xs font-medium text-stone-700 bg-white hover:bg-stone-900 hover:text-white hairline-all rounded transition">+ Add</button>`}
-      </td>`;
-    tb.appendChild(tr);
-  });
-  document.getElementById('invCount').textContent = inventory.length + ' items';
-  const low = inventory.filter(i => i.stock <= 10 && i.stock > 0);
-  document.getElementById('lowstock-hint').textContent = low.length ? low.length + ' low-stock' : '';
-  lucide.createIcons();
-}
+				<!-- Inventory grid -->
+				<div class="flex-1 overflow-y-auto" id="invScroll">
+					<table class="hidden md:table w-full text-left border-collapse">
+						<thead class="sticky top-0 bg-white/95 backdrop-blur hairline-b z-10 text-[11px] font-medium tracking-wider text-stone-400 uppercase">
+							<tr>
+								<th class="py-2.5 px-4 font-normal" scope="col">Barcode / SKU</th>
+								<th class="py-2.5 px-4 font-normal" scope="col">Item</th>
+								<th class="py-2.5 px-4 text-right font-normal" scope="col">Unit Price (NGN)</th>
+								<th class="py-2.5 px-4 text-center font-normal" scope="col">Available</th>
+								<th class="py-2.5 px-4 text-center font-normal" scope="col">Status</th>
+								<th class="py-2.5 px-4 text-right font-normal" scope="col">Action</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-[#f2f2ef] text-[13px] text-stone-700" id="invBody"></tbody>
+					</table>
+					<div class="md:hidden divide-y divide-[#f2f2ef]" id="invCards"></div>
+				</div>
 
-function renderCart() {
-  const body = document.getElementById('cartBody');
-  const codes = Object.keys(cart);
-  if (!codes.length) {
-    body.innerHTML = `
-      <div class="h-full flex flex-col items-center justify-center text-center p-6 space-y-3 my-auto">
-        <div class="w-12 h-12 rounded-full hairline-all bg-stone-50 flex items-center justify-center text-stone-400">
-          <i class="w-5 h-5 stroke-[1.5]" data-lucide="shopping-bag"></i>
-        </div>
-        <p class="text-xs font-semibold text-stone-800 tracking-tight">Your sale ticket is empty</p>
-        <p class="text-[11px] text-stone-400 max-w-[210px] mt-1 leading-normal">Scan a barcode, type in the lookup, or select from the catalog.</p>
-      </div>`;
-  } else {
-    body.innerHTML = codes.map(code => {
-      const item = cart[code];
-      return `
-        <div class="p-2.5 bg-stone-50/70 hairline-all rounded-lg hover:bg-stone-50 transition">
-          <div class="flex items-start justify-between">
-            <div class="pr-2">
-              <div class="text-xs font-medium text-stone-900 leading-snug">${item.name}</div>
-              <div class="text-[11px] text-stone-400 font-mono tabular-nums mt-0.5">${formatNaira(item.price)} × ${item.qty}</div>
-            </div>
-                        <div class="font-mono text-xs font-medium text-stone-900 tabular-nums">${formatNaira(item.price * item.qty)}</div>
-            <button onclick="removeItem('${code}')" class="text-stone-300 hover:text-rose-600 transition text-[11px] mt-0.5" title="Remove line">
-              <i class="w-3.5 h-3.5 inline" data-lucide="trash-2"></i>
-            </button>
-          </div>
-        </div>
-        <div class="flex items-center justify-between pt-2 mt-1 hairline-t">
-          <span class="text-[10px] uppercase font-mono tracking-wider text-stone-400">Qty</span>
-          <div class="inline-flex items-center hairline-all rounded bg-white overflow-hidden text-xs">
-            <button onclick="decreaseQty('${code}')" class="px-2 py-0.5 text-stone-500 hover:bg-stone-100 hover:text-stone-900 font-mono transition">−</button>
-            <span class="px-2.5 py-0.5 font-mono font-medium text-stone-900 text-xs tabular-nums">${item.qty}</span>
-            <button onclick="increaseQty('${code}')" class="px-2 py-0.5 text-stone-500 hover:bg-stone-100 hover:text-stone-900 font-mono transition">+</button>
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
+				<!-- Footer status bar (desktop) -->
+				<div class="h-9 hairline-t bg-stone-50/70 px-4 hidden md:flex items-center justify-between text-[11px] text-stone-500 shrink-0">
+					<div class="flex items-center space-x-4">
+						<span><kbd class="font-mono text-[10px] text-stone-400 hairline-all bg-white px-1 py-0.5 rounded">F1</kbd> Barcode Search</span>
+						<span><kbd class="font-mono text-[10px] text-stone-400 hairline-all bg-white px-1 py-0.5 rounded">F12</kbd> Complete Sale</span>
+						<span><kbd class="font-mono text-[10px] text-stone-400 hairline-all bg-white px-1 py-0.5 rounded">Esc</kbd> Stop Scan</span>
+					</div>
+					<div class="font-mono text-[11px] text-stone-400"><span id="invCount">0 items</span></div>
+				</div>
 
-  const qty = codes.reduce((s, c) => s + cart[c].qty, 0);
-  const sub = codes.reduce((sum, c) => sum + cart[c].qty * cart[c].price, 0);
-  const tax = sub * TAX_RATE;
-  const grand = sub + tax;
+				<!-- Mobile spacer for bottom nav -->
+				<div class="h-16 md:hidden shrink-0"></div>
+			</section>
 
-  document.getElementById('tQty').textContent = `${qty} units (${codes.length} unique)`;
-  document.getElementById('tSub').textContent = `${formatNaira(sub)}`;
-  document.getElementById('tTax').textContent = `${formatNaira(tax)}`;
-  document.getElementById('tTotal').textContent = `${formatNaira(grand)}`;
-  document.getElementById('btn-total-preview').textContent = `${formatNaira(grand)}`;
-  lucide.createIcons();
-}
+			<!-- ZONE 2: Cart (desktop only) -->
+			<section class="hidden md:flex w-[410px] 2xl:w-[440px] flex-col bg-white rounded-xl hairline-all overflow-hidden shrink-0">
+				<div class="p-3.5 hairline-b bg-white shrink-0">
+					<div class="flex items-center justify-between">
+						<div class="flex items-center space-x-2">
+							<span class="w-2 h-2 rounded-full bg-cobalt-600"></span>
+							<h2 class="text-sm font-semibold text-stone-900 tracking-tight">Current Ticket #<span id="desktopTicketNum">10492</span></h2>
+						</div>
+						<button class="text-xs text-stone-500 hover:text-rose-700 transition font-medium px-1.5 py-0.5 rounded hover:bg-rose-50" onclick="AppUI.confirmClearCart()">Clear</button>
+					</div>
+				</div>
+				<div class="flex-1 overflow-y-auto p-3 space-y-2" id="cartBody"></div>
+				<div class="p-4 bg-stone-50 hairline-t shrink-0 space-y-3">
+					<div class="space-y-1.5 text-xs text-stone-600">
+						<div class="flex justify-between">
+							<span class="text-stone-500">Item Count</span>
+							<span class="font-mono text-[13px] tabular-nums font-medium text-stone-800" id="tQty">0 units (0 unique)</span>
+						</div>
+						<div class="flex justify-between">
+							<span class="text-stone-500">Subtotal</span>
+							<span class="font-mono text-[13px] tabular-nums font-medium text-stone-800" id="tSub">₦0.00</span>
+						</div>
+						<div class="flex justify-between items-center">
+							<span class="text-stone-500 flex items-center">Tax (8%)<span class="ml-1 text-[10px] text-stone-400 cursor-help">ⓘ</span></span>
+							<span class="font-mono text-[13px] tabular-nums font-medium text-stone-800" id="tTax">₦0.00</span>
+						</div>
+					</div>
+					<div class="pt-2.5 hairline-t flex items-baseline justify-between">
+						<div>
+							<span class="text-[11px] font-medium tracking-wider uppercase text-stone-400 block">Total Due</span>
+							<span class="text-[10px] text-stone-400 font-mono">NGN (Nigerian Naira)</span>
+						</div>
+						<div class="font-mono font-medium text-2xl tracking-tight text-stone-950 tabular-nums" id="tTotal">₦0.00</div>
+					</div>
+					<button class="w-full py-3 px-4 bg-stone-900 hover:bg-cobalt-900 text-white rounded-lg text-xs font-semibold tracking-wide transition flex items-center justify-between group shadow-sm active:scale-[0.99]" onclick="AppUI.confirmCheckout()">
+						<span class="flex items-center space-x-2">
+							<i class="w-4 h-4 text-emerald-400 group-hover:text-white transition-colors" data-lucide="check"></i>
+							<span>Complete Sale &amp; Deduct</span>
+						</span>
+						<div class="flex items-center space-x-2">
+							<span class="font-mono text-[13px] font-medium tracking-normal text-stone-200" id="btn-total-preview">₦0.00</span>
+							<kbd class="px-1.5 py-0.5 bg-stone-800 text-[10px] font-mono rounded text-stone-300 group-hover:bg-cobalt-800">F12</kbd>
+						</div>
+					</button>
+					<div class="pt-2 hairline-t flex items-center justify-between text-[11px] text-stone-500 font-mono">
+						<span class="flex items-center space-x-1.5 text-stone-600">
+							<span class="w-1.5 h-1.5 rounded-full bg-stone-300"></span>
+							<span id="lastTxLabel">Last: —</span>
+						</span>
+						<span class="text-stone-400">Zoho Sync</span>
+					</div>
+				</div>
+			</section>
+		</div>
 
-function renderTx() {
-  if (!txLog.length) {
-    document.getElementById('lastTxLabel').textContent = 'Last: —';
-    return;
-  }
-  const last = txLog[txLog.length - 1];
-  document.getElementById('lastTxLabel').textContent = `Last: #${last.id} (${last.id} (${formatNaira(last.total)})`;
-}
+		<!-- ===== MOBILE BOTTOM NAV ===== -->
+		<nav class="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white hairline-t pb-safe flex items-stretch justify-around">
+			<button class="flex-1 flex flex-col items-center py-2 text-stone-700 border-t-2 border-transparent" data-tab="sell" onclick="AppUI.switchTab('sell')">
+				<i class="w-5 h-5" data-lucide="scan-line"></i><span class="text-[10px] font-medium mt-0.5">Sell</span>
+			</button>
+			<button class="flex-1 flex flex-col items-center py-2 text-stone-400 border-t-2 border-transparent" data-tab="catalog" onclick="AppUI.switchTab('catalog')">
+				<i class="w-5 h-5" data-lucide="package"></i><span class="text-[10px] font-medium mt-0.5">Catalog</span>
+			</button>
+			<button class="flex-1 flex flex-col items-center py-2 text-stone-400 border-t-2 border-transparent relative" onclick="AppUI.openCartSheet()">
+				<i class="w-5 h-5" data-lucide="shopping-bag"></i><span class="text-[10px] font-medium mt-0.5">Ticket</span>
+				<span class="absolute top-1 right-[22%] min-w-[16px] h-4 px-1 rounded-full bg-cobalt-600 text-white text-[9px] font-bold flex items-center justify-center hidden" id="cart-count-badge">0</span>
+			</button>
+			<button class="flex-1 flex flex-col items-center py-2 text-stone-400 border-t-2 border-transparent" data-tab="history" onclick="AppUI.switchTab('history')">
+				<i class="w-5 h-5" data-lucide="receipt-text"></i><span class="text-[10px] font-medium mt-0.5">Sales</span>
+			</button>
+		</nav>
 
-/* ================= SCAN & DEDUCT ================= */
-function processBarcode(code) {
-  const item = inventory.find(i => i.barcode === code || i.sku === code);
-  if (!item) {
-    showToast('Unknown barcode: ' + code, true);
-    flashFeedback('ERROR', 'No match: ' + code, '', 0);
-    return;
-  }
-  if (!item.barcode && !item.sku) {
-    showToast('"' + item.name + '" has no SKU set in Zoho — add it to scan it', true);
-    return;
-  }
-  // Stock validation — skipped when "Ignore Stock Validation" is checked
-  if (!isStockCheckBypassed()) {
-    if (item.stock <= 0) {
-      showToast('"' + item.name + '" is OUT OF STOCK', true);
-      flashFeedback('DEPLETED', item.name, formatNaira(item.price), 0);
-      return;
-    }
-  }
+		<!-- ===== MOBILE CART SHEET ===== -->
+		<div id="cartSheetOverlay" class="md:hidden fixed inset-0 z-50 hidden">
+			<div class="absolute inset-0 bg-stone-950/40 backdrop-blur-xs fade-in" onclick="AppUI.closeCartSheet()"></div>
+			<div id="cartSheet" class="absolute bottom-0 inset-x-0 bg-white rounded-t-2xl max-h-[85vh] flex flex-col shadow-2xl">
+				<div class="pt-2 pb-1 flex justify-center shrink-0">
+					<div class="w-10 h-1.5 rounded-full bg-stone-200"></div>
+				</div>
+				<div class="px-4 pb-2.5 hairline-b flex items-center justify-between shrink-0">
+					<h2 class="text-sm font-semibold text-stone-900 flex items-center gap-2">
+						<span class="w-2 h-2 rounded-full bg-cobalt-600"></span>Ticket #<span id="mobileTicketNum">10492</span>
+					</h2>
+					<button class="text-xs text-stone-500 hover:text-rose-700 font-medium px-2 py-1 rounded hover:bg-rose-50" onclick="AppUI.confirmClearCart()">Clear</button>
+				</div>
+				<div class="flex-1 overflow-y-auto p-3 space-y-2" id="cartBodyMobile"></div>
+				<div class="p-4 bg-stone-50 hairline-t shrink-0 pb-safe space-y-2.5">
+					<div class="flex justify-between text-xs"><span class="text-stone-500">Subtotal</span><span class="font-mono font-medium" id="mSub">₦0.00</span></div>
+					<div class="flex justify-between text-xs"><span class="text-stone-500">Tax (8%)</span><span class="font-mono font-medium" id="mTax">₦0.00</span></div>
+					<div class="flex items-baseline justify-between pt-1 hairline-t">
+						<span class="text-[11px] uppercase tracking-wider text-stone-400 font-medium">Total</span>
+						<span class="font-mono font-medium text-xl text-stone-950" id="mTotal">₦0.00</span>
+					</div>
+					<button class="w-full py-3.5 bg-stone-900 active:bg-cobalt-900 text-white rounded-xl text-sm font-semibold tracking-wide flex items-center justify-center gap-2 active:scale-[0.98] transition" onclick="AppUI.confirmCheckout()">
+						<i class="w-4 h-4 text-emerald-400" data-lucide="check"></i> Complete Sale · <span class="font-mono" id="mBtnTotal">₦0.00</span>
+					</button>
+				</div>
+			</div>
+		</div>
 
-  const key = item.barcode || item.sku;
-  cart[key] = cart[key] || { item_id: item.item_id, name: item.name, price: item.price, qty: 0, deducted: 0 };
-  cart[key].qty++;
-  // Only decrement local stock display if it's above 0
-  if (item.stock > 0) {
-    item.stock--;
-    cart[key].deducted++;  // track what we actually took from local display
-  }
+		<!-- ===== SALES HISTORY TAB (mobile) ===== -->
+		<section id="historyTab" class="md:hidden hidden flex-1 overflow-y-auto bg-white hairline-all">
+			<div class="p-4 space-y-2" id="historyList"></div>
+		</section>
 
-  // Display what we actually took from local display
-  flashFeedback('DETECTED', item.name + ' (' + key + ')', formatNaira(item.price), cart[key].qty);
-  renderInventory();
-  renderCart();
-  showToast(item.name + (isStockCheckBypassed() ? ' added (validation off)' : ' — stock now ' + item.stock));
-  if (!isStockCheckBypassed() && item.stock <= 10) showToast('Low stock alert: ' + item.name + ' (' + item.stock + ' left)', true);
-}
+		<!-- ===== ZOHO SETTINGS MODAL ===== -->
+		<div id="settingsModal" class="hidden fixed inset-0 bg-stone-950/40 backdrop-blur-xs items-center justify-center z-50 p-4">
+			<div class="bg-white rounded-xl hairline-all w-full max-w-md overflow-hidden shadow-xl pop-in max-h-[92vh] overflow-y-auto">
+				<div class="p-4 hairline-b bg-white flex items-center justify-between sticky top-0 bg-white z-10">
+					<div class="flex items-center space-x-2">
+						<div class="w-6 h-6 rounded-md bg-stone-900 text-white flex items-center justify-center text-xs"><i class="w-3.5 h-3.5" data-lucide="plug"></i></div>
+						<h3 class="text-sm font-semibold text-stone-900">Zoho Connection</h3>
+					</div>
+					<button class="text-stone-400 hover:text-stone-700 p-1 rounded" onclick="AppUI.toggleSettings()"><i class="w-4 h-4" data-lucide="x"></i></button>
+				</div>
+				<div class="p-5 space-y-3">
+					<div>
+						<label class="text-xs font-medium text-stone-600">Region (data center)</label>
+						<select id="cfgRegion" class="w-full mt-1 px-3 py-2.5 text-xs bg-white hairline-all rounded-md font-medium text-stone-800 focus:outline-none focus:ring-1 focus:ring-cobalt-600">
+							<option value="com">.com (US)</option>
+							<option value="eu">.eu (Europe)</option>
+							<option value="in">.in (India)</option>
+							<option value="com.au">.com.au (Australia)</option>
+							<option value="jp">.jp (Japan)</option>
+							<option value="sa">.sa (Saudi Arabia)</option>
+						</select>
+					</div>
+					<div>
+						<label class="text-xs font-medium text-stone-600">Organization ID</label>
+						<input id="cfgOrg" inputmode="numeric" class="w-full mt-1 px-3 py-2.5 text-sm font-mono hairline-all rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-cobalt-600" placeholder="e.g. 712345678" />
+					</div>
+					<div>
+						<label class="text-xs font-medium text-stone-600">Client ID</label>
+						<input id="cfgClientId" class="w-full mt-1 px-3 py-2.5 text-sm font-mono hairline-all rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-cobalt-600" placeholder="1000.XXXXXXXXXX" />
+					</div>
+					<div>
+						<label class="text-xs font-medium text-stone-600">Client Secret</label>
+						<input id="cfgSecret" type="password" class="w-full mt-1 px-3 py-2.5 text-sm font-mono hairline-all rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-cobalt-600" />
+					</div>
+					<div>
+						<label class="text-xs font-medium text-stone-600">Refresh Token</label>
+						<input id="cfgRefresh" type="password" class="w-full mt-1 px-3 py-2.5 text-sm font-mono hairline-all rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-cobalt-600" placeholder="1000.XXXXXXXXX" />
+					</div>
+					<button class="w-full py-3 bg-stone-900 hover:bg-cobalt-900 text-white rounded-lg text-xs font-semibold tracking-wide transition flex items-center justify-center space-x-1.5 active:scale-[0.98]" onclick="AppConfig.save()">
+						<i class="w-3.5 h-3.5 text-emerald-400" data-lucide="plug-zap"></i>
+						<span>Save &amp; Connect</span>
+					</button>
+					<div id="connStatus" class="text-xs text-center text-stone-500 font-mono"></div>
+				</div>
+			</div>
+		</div>
 
-function increaseQty(code) {
-  const item = inventory.find(i => i.barcode === code || i.sku === code);
-  if (!item || !cart[code]) return;
-  if (!isStockCheckBypassed() && item.stock <= 0) return showToast('No more "' + item.name + '" in stock', true);
-  cart[code].qty++;
-  if (item.stock > 0) {
-    item.stock--;
-    cart[code].deducted++;
-  }
-  flashFeedback('DETECTED', item.name + ' (' + code + ')', formatNaira(item.price), cart[code].qty);
-  renderInventory(); renderCart();
-}
+		<!-- ===== GENERIC CONFIRM POPUP ===== -->
+		<div id="confirmModal" class="hidden fixed inset-0 bg-stone-950/50 backdrop-blur-xs items-center justify-center z-[70] p-4">
+			<div class="bg-white rounded-2xl w-full max-w-xs p-5 text-center shadow-2xl pop-in">
+				<div id="confirmIcon" class="w-12 h-12 rounded-full mx-auto flex items-center justify-center mb-3"></div>
+				<h3 class="text-sm font-semibold text-stone-900" id="confirmTitle">Are you sure?</h3>
+				<p class="text-xs text-stone-500 mt-1 leading-relaxed" id="confirmMsg"></p>
+				<div class="grid grid-cols-2 gap-2 mt-4">
+					<button class="py-2.5 rounded-xl hairline-all bg-white text-xs font-medium text-stone-700 hover:bg-stone-50 active:scale-[0.97] transition" onclick="AppUI.closeConfirm(false)">Cancel</button>
+					<button class="py-2.5 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-cobalt-900 active:scale-[0.97] transition" id="confirmOkBtn" onclick="AppUI.closeConfirm(true)">Confirm</button>
+				</div>
+			</div>
+		</div>
 
+		<!-- ===== SUCCESS / RECEIPT POPUP ===== -->
+		<div id="successModal" class="hidden fixed inset-0 bg-stone-950/50 backdrop-blur-xs items-center justify-center z-[70] p-4">
+			<div class="bg-white rounded-2xl w-full max-w-xs p-6 text-center shadow-2xl pop-in">
+				<div class="w-16 h-16 rounded-full bg-emerald-50 mx-auto flex items-center justify-center mb-3">
+					<div class="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center bounce-check">
+						<i class="w-6 h-6 text-white" data-lucide="check"></i>
+					</div>
+				</div>
+				<h3 class="text-base font-semibold text-stone-900">Sale Completed</h3>
+				<p class="text-xs text-stone-500 mt-1">Stock deducted successfully</p>
+				<div class="mt-4 bg-stone-50 rounded-xl hairline-all p-3 space-y-1.5 text-xs" id="receiptDetails"></div>
+				<button class="mt-4 w-full py-3 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-cobalt-900 active:scale-[0.97] transition" onclick="AppUI.closeSuccess()">New Sale</button>
+			</div>
+		</div>
 
+		<!-- ===== ITEM DETAIL POPUP ===== -->
+		<div id="itemModal" class="hidden fixed inset-0 bg-stone-950/40 backdrop-blur-xs items-center justify-center z-50 p-4">
+			<div class="bg-white rounded-xl w-full max-w-sm overflow-hidden shadow-xl pop-in">
+				<div class="p-4 hairline-b flex items-start justify-between">
+					<div class="flex items-center space-x-2.5 min-w-0">
+						<div class="w-9 h-9 rounded-lg bg-stone-50 hairline-all flex items-center justify-center text-stone-500 shrink-0">
+							<i class="w-4 h-4" data-lucide="package"></i>
+						</div>
+						<div class="min-w-0">
+							<h3 class="text-sm font-semibold text-stone-900 truncate" id="itemModalName">Item</h3>
+							<div class="flex items-center">
+								<p class="text-[11px] font-mono text-stone-400" id="itemModalBarcode"></p><button type="button" onclick="AppUI.copyItemId()" class="shrink-0 p-1 rounded-md text-stone-400 hover:text-stone-900 hover:bg-stone-100 transition" title="Copy Item ID" aria-label="Copy Item ID">
+									<i class="w-3.5 h-3.5" data-lucide="copy"></i>
+								</button>
+							</div>
+						</div>
+					</div>
+					<button type="button" onclick="AppUI.closeItemModal()" class="w-8 h-8 rounded-lg flex items-center justify-center text-stone-400 hover:text-stone-900 hover:bg-stone-100 transition" aria-label="Close item details" title="Close">
+						<i class="w-4 h-4" data-lucide="x"></i>
+					</button>
+				</div>
+				<div class="p-4 space-y-3">
+					<div class="grid grid-cols-2 gap-3 text-xs">
+						<div class="bg-stone-50 rounded-lg hairline-all p-3">
+							<span class="text-stone-400 text-[10px] uppercase tracking-wider font-medium"> Cost Price </span>
+							<p class="font-mono font-semibold text-stone-900 mt-1 text-sm" id="itemModalCostPrice"> ₦0.00 </p>
+						</div>
+						<div class="bg-stone-50 rounded-lg hairline-all p-3">
+							<span class="text-stone-400 text-[10px] uppercase tracking-wider font-medium"> Selling Price </span>
+							<p class="font-mono font-semibold text-stone-900 mt-1 text-sm" id="itemModalSellingPrice"> ₦0.00 </p>
+						</div>
+						<div class="bg-stone-50 rounded-lg hairline-all p-3">
+							<span class="text-stone-400 text-[10px] uppercase tracking-wider font-medium"> Available </span>
+							<p class="font-mono font-semibold text-stone-900 mt-1 text-sm" id="itemModalStock"> 0 </p>
+						</div>
+					</div>
+					<div class="bg-stone-50 rounded-lg hairline-all p-3">
+						<span class="text-stone-400 text-[10px] uppercase tracking-wider font-medium"> Description </span>
+						<p id="itemModalDescription" class="text-xs text-stone-600 leading-relaxed mt-1.5"> No description available. </p>
+					</div>
+				</div>
+				<div class="px-4 pb-4">
+					<button class="w-full py-3 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-cobalt-900 active:scale-[0.98] transition flex items-center justify-center gap-2" id="itemModalAddBtn">
+						<i class="w-4 h-4 text-emerald-400" data-lucide="plus"></i> Add to Ticket </button>
+				</div>
+			</div>
+		</div>
 
-function flashFeedback(badge, title, price, qty) {
-  const badgeEl = document.getElementById('fb-badge');
-  badgeEl.textContent = badge;
-  badgeEl.className = 'inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-mono font-medium border ' +
-    (badge === 'DETECTED'
-      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-      : badge === 'ERROR' || badge === 'DEPLETED'
-        ? 'bg-rose-50 text-rose-700 border-rose-200'
-        : 'bg-stone-100 text-stone-500 border-stone-200');
-  document.getElementById('recent-item-title').textContent = title;
-  document.getElementById('recent-item-price').textContent = price;
-  document.getElementById('recent-qty-pill').textContent = qty;
-}
+		<!-- ===== TOAST STACK ===== -->
+		<div class="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-[80] flex flex-col items-end gap-2 pointer-events-none" id="toastStack"></div>
 
+		<script>
+			// ========================================
+			// APPLICATION CONFIGURATION & STATE
+			// ========================================
 
-function decreaseQty(code) {
-  const item = inventory.find(i => i.barcode === code || i.sku === code);
-  if (!item || !cart[code]) return;
-  cart[code].qty--;
-  if (cart[code].deducted > 0) {
-    item.stock++;
-    cart[code].deducted--;
-  }
-  if (cart[code].qty <= 0) delete cart[code];
-  renderInventory(); renderCart();
-}
+			const APP_CONFIG = {
+				TAX_RATE: 0.08,
+				API_URL: 'http://localhost:3001',
+				DEFAULT_INVENTORY: [
+					{ barcode: '8901234567890', name: 'Organic Coffee Beans 500g', price: 12.99, stock: 45 },
+					{ barcode: '1234567890128', name: 'Green Tea Pack (25 bags)', price: 5.49, stock: 8 },
+					{ barcode: '4006381333931', name: 'Dark Chocolate Bar 100g', price: 3.25, stock: 120 },
+					{ barcode: '502345678900', name: 'Almond Milk 1L', price: 4.75, stock: 3 },
+					{ barcode: '012345678905', name: 'Protein Bar - Choco', price: 2.99, stock: 60 }
+				]
+			};
 
+			const AppState = {
+				inventory: JSON.parse(localStorage.getItem('zoho_pos_inv')) || APP_CONFIG.DEFAULT_INVENTORY,
+				cart: {},
+				txLog: JSON.parse(localStorage.getItem('zoho_pos_tx')) || [],
+				zohoCfg: JSON.parse(localStorage.getItem('zoho_pos_cfg')) || null,
+				confirmCallback: null,
+				itemModalCode: null,
+				cartTxSeq: 0,
+				session: JSON.parse(localStorage.getItem('atelier_session')) || null,
 
-function removeItem(code) {
-  const item = inventory.find(i => i.barcode === code || i.sku === code);
-  if (item && cart[code].deducted > 0) {
-    item.stock += cart[code].deducted;  // restore only what was actually deducted
-  }
-  delete cart[code];
-  renderInventory(); renderCart();
-}
+				init() {
+					this.cartTxSeq = this.txLog.length ? this.txLog[this.txLog.length - 1].id + 1 : 10492;
+				},
 
-function clearCart() {
-  Object.keys(cart).forEach(c => {
-    const item = inventory.find(i => i.barcode === c || i.sku === c);
-    if (item && cart[c].deducted > 0) item.stock += cart[c].deducted;
-  });
-  cart = {};
-  renderInventory(); renderCart();
-}
+				save() {
+					localStorage.setItem('zoho_pos_inv', JSON.stringify(this.inventory));
+					localStorage.setItem('zoho_pos_tx', JSON.stringify(this.txLog));
+				},
 
+				getCartTotal() {
+					return Object.keys(this.cart).reduce((sum, code) => sum + this.cart[code].qty * this.cart[code].price, 0);
+				},
 
-/* ================= CHECKOUT ================= */
-async function checkout() {
-  const codes = Object.keys(cart);
-  if (!codes.length) return showToast('Cart is empty', true);
+				getCartTotalWithTax() {
+					return this.getCartTotal() * (1 + APP_CONFIG.TAX_RATE);
+				},
 
-  const qty = codes.reduce((s, c) => s + cart[c].qty, 0);
-  const total = codes.reduce((sum, c) => sum + cart[c].qty * cart[c].price, 0) * (1 + TAX_RATE);
+				getCartQtyTotal() {
+					return Object.keys(this.cart).reduce((s, c) => s + this.cart[c].qty, 0);
+				},
 
-  // If Zoho is configured, push adjustment; otherwise local-only sale
-  if (zohoCfg) {
-    try {
-      const res = await fetch(API_URL + '/api/zoho/adjustment', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cfg: zohoCfg,
-          reason: 'POS Sale',
-          line_items: codes.map(c => ({
-            item_id: cart[c].item_id,
-            quantity_adjusted: -cart[c].qty,
-            name: cart[c].name
-          }))
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) return showToast('Zoho: ' + (data.message || 'adjustment failed'), true);
-    } catch (e) {
-      return showToast('Cannot reach server — is server.js running?', true);
-    }
-  }
+				hasRole(role) {
+					if (!this.session) return false;
+					const memberships = JSON.parse(localStorage.getItem('atelier_memberships') || '[]');
+					const membership = memberships.find(m => m.id === this.session.membershipId && m.status === 'active');
+					return membership && membership.role === role;
+				},
 
-  txLog.push({ id: Date.now() % 100000, items: qty, total });
-  cart = {};  // deducted amounts are intentionally NOT restored — sale is final
+				canManageInventory() {
+					if (!this.session) return false;
+					const memberships = JSON.parse(localStorage.getItem('atelier_memberships') || '[]');
+					const membership = memberships.find(m => m.id === this.session.membershipId && m.status === 'active');
+					return membership && ['owner', 'admin', 'manager'].includes(membership.role);
+				},
 
-  saveAll();
-  renderInventory(); renderCart(); renderTx();
-  showToast('Sale completed — stock deducted' + (zohoCfg ? ' · Zoho adjustment created' : ' (local mode)'));
-  if (zohoCfg) loadZohoItems();
-}
+				canManageTeam() {
+					if (!this.session) return false;
+					const memberships = JSON.parse(localStorage.getItem('atelier_memberships') || '[]');
+					const membership = memberships.find(m => m.id === this.session.membershipId && m.status === 'active');
+					return membership && ['owner', 'admin'].includes(membership.role);
+				}
+			};
 
-/* ================= MANUAL LOOKUP ================= */
-function manualLookup() {
-  const v = document.getElementById('manualBarcode').value.trim();
-  if (v) {
-    processBarcode(v);
-    document.getElementById('manualBarcode').value = '';
-  }
-}
-document.getElementById('manualBarcode').addEventListener('keydown', e => {
-  if (e.key === 'Enter') manualLookup();
-});
+			// ========================================
+			// UTILITY FUNCTIONS
+			// ========================================
 
-/* ================= CAMERA SCANNER (QuaggaJS) ================= */
-function toggleScanner() { scanning ? stopScanner() : startScanner(); }
+			const Utils = {
+				formatNaira: (v) => '₦' + Number(v).toLocaleString('en-NG', {
+					minimumFractionDigits: 2,
+					maximumFractionDigits: 2
+				}),
 
-function startScanner() {
-  const scannerView = document.getElementById('scannerView');
-  const label = document.getElementById('scan-btn-label');
-  scannerView.classList.remove('hidden');
-  label.textContent = 'Stop';
-  scanning = true;
+				isMobile: () => window.innerWidth < 768,
 
-  Quagga.init({
-    inputStream: {
-      name: 'Live', type: 'LiveStream', target: scannerView,
-      constraints: { facingMode: { ideal: 'environment' }, width: { min: 640 }, height: { min: 480 } }
-    },
-    locator: { patchSize: 'medium', halfSample: true },
-    numOfWorkers: navigator.hardwareConcurrency || 4,
-    decoder: { readers: ['ean_reader', 'ean_8_reader', 'upc_reader', 'code_128_reader', 'code_39_reader'] },
-    locate: true
-  }, function (err) {
-    if (err) {
-      console.error('Quagga error:', err);
-      showToast('Camera error: ' + err.message, true);
-      stopScanner();
-      return;
-    }
-    Quagga.start();
-  });
+				escapeHtml: (value) => String(value)
+					.replace(/&/g, '&amp;')
+					.replace(/</g, '&lt;')
+					.replace(/>/g, '&gt;')
+					.replace(/"/g, '&quot;')
+					.replace(/'/g, '&#039;'),
 
-  Quagga.offDetected();
-  Quagga.onDetected(function (data) {
-    if (!data || !data.codeResult || !data.codeResult.code) return;
-    console.log('Barcode detected:', data.codeResult.code);
-    stopScanner();
-    processBarcode(data.codeResult.code);
-  });
-}
+				showToast: (msg, isErr) => {
+					const stack = document.getElementById('toastStack');
+					const el = document.createElement('div');
+					el.className = 'toast-in pointer-events-auto max-w-[85vw] sm:max-w-sm px-4 py-2.5 rounded-lg text-xs font-medium shadow-lg flex items-start gap-2 ' + (isErr ? 'bg-rose-600 text-white' : 'bg-stone-900 text-white');
+					el.innerHTML = `<i class="w-4 h-4 shrink-0 mt-0.5" data-lucide="${isErr ? 'alert-circle' : 'check-circle-2'}"></i><span>${msg}</span>`;
+					stack.appendChild(el);
+					lucide.createIcons();
+					setTimeout(() => {
+						el.style.transition = 'opacity .25s, transform .25s';
+						el.style.opacity = '0';
+						el.style.transform = 'translateY(8px)';
+					}, 2600);
+					setTimeout(() => el.remove(), 2900);
+				}
+			};
 
-function stopScanner() {
-  try { Quagga.stop(); } catch (e) {}
-  scanning = false;
-  document.getElementById('scannerView').classList.add('hidden');
-  document.getElementById('scan-btn-label').textContent = 'Camera';
-}
+			// ========================================
+			// AUTHENTICATION & ACCOUNT MANAGEMENT
+			// ========================================
 
-/* ================= MISC ================= */
-function flashReload() {
-  const icon = document.getElementById('refresh-icon');
-  icon.classList.add('animate-spin');
-  setTimeout(() => { icon.classList.remove('animate-spin'); renderInventory(); }, 500);
-}
+			const AppAuth = {
+				showLoggedOutView() {
+					document.getElementById('loggedOutView').classList.remove('hidden');
+					document.getElementById('loggedInView').classList.add('hidden');
+					document.getElementById('loginView').classList.add('hidden');
+					document.getElementById('createOrganizationView').classList.add('hidden');
+					document.getElementById('joinOrganizationView').classList.add('hidden');
+					document.getElementById('teamView').classList.add('hidden');
+					document.getElementById('inviteStaffView').classList.add('hidden');
+					lucide.createIcons();
+				},
 
-setInterval(() => {
-  document.getElementById('header-clock').textContent = new Date().toTimeString().split(' ')[0];
-}, 1000);
+				showLoggedInView() {
+					document.getElementById('loggedOutView').classList.add('hidden');
+					document.getElementById('loggedInView').classList.remove('hidden');
+					document.getElementById('loginView').classList.add('hidden');
+					document.getElementById('createOrganizationView').classList.add('hidden');
+					document.getElementById('joinOrganizationView').classList.add('hidden');
+					document.getElementById('teamView').classList.add('hidden');
+					document.getElementById('inviteStaffView').classList.add('hidden');
+					
+					// Update authenticated header
+					const users = JSON.parse(localStorage.getItem('atelier_users') || '[]');
+					const user = users.find(u => u.id === AppState.session.userId);
+					if (user) {
+						document.getElementById('authenticatedUserName').textContent = user.name;
+						const orgs = JSON.parse(localStorage.getItem('atelier_organizations') || '[]');
+						const org = orgs.find(o => o.id === AppState.session.organizationId);
+						document.getElementById('authenticatedOrgName').textContent = org?.name || 'Organization';
+					}
 
-window.addEventListener('keydown', (e) => {
-  if (e.key === 'F1') { e.preventDefault(); document.getElementById('manualBarcode').focus(); }
-  else if (e.key === 'F12') { e.preventDefault(); checkout(); }
-  else if (e.key === 'Escape') {
-    if (scanning) stopScanner();
-    const m = document.getElementById('settingsModal');
-    if (!m.classList.contains('hidden')) m.classList.add('hidden');
-  }
-});
+					// Hide team button if not owner/admin
+					const teamBtn = document.getElementById('teamManagementBtn');
+					teamBtn.style.display = AppState.canManageTeam() ? '' : 'none';
 
-/* ================= INIT ================= */
-renderInventory();
-renderCart();
-renderTx();
-lucide.createIcons();
+					lucide.createIcons();
+				},
 
-if (zohoCfg) {
-  updateZohoBadge(true, zohoCfg.org);
-  loadZohoItems();
-} else {
-  updateZohoBadge(false);
-  showToast('Configure Zoho connection in Settings', true);
-}
-</script>
-</body>
+				showLoginView() {
+					this.showLoggedOutView();
+					document.getElementById('loggedOutView').classList.add('hidden');
+					document.getElementById('loginView').classList.remove('hidden');
+					document.getElementById('loginName')?.focus();
+					lucide.createIcons();
+				},
+
+				showCreateOrganizationView() {
+					this.showLoggedOutView();
+					document.getElementById('loggedOutView').classList.add('hidden');
+					document.getElementById('createOrganizationView').classList.remove('hidden');
+					document.getElementById('organizationName')?.focus();
+					lucide.createIcons();
+				},
+
+				showJoinOrganizationView() {
+					this.showLoggedOutView();
+					document.getElementById('loggedOutView').classList.add('hidden');
+					document.getElementById('joinOrganizationView').classList.remove('hidden');
+					document.getElementById('invitationCode')?.focus();
+					lucide.createIcons();
+				},
+
+				showTeamView() {
+					if (!AppState.canManageTeam()) {
+						alert('Only owners and admins can manage teams');
+						return;
+					}
+					document.getElementById('loggedInView').classList.add('hidden');
+					document.getElementById('teamView').classList.remove('hidden');
+					this.renderTeamView();
+					lucide.createIcons();
+				},
+
+				showInviteStaffView() {
+					document.getElementById('teamView').classList.add('hidden');
+					document.getElementById('inviteStaffView').classList.remove('hidden');
+					document.getElementById('inviteStaffName')?.focus();
+					lucide.createIcons();
+				},
+
+				toggleLoginPassword() {
+					const input = document.getElementById('loginPassword');
+					const icon = document.getElementById('loginPasswordIcon');
+					if (!input) return;
+					const isPassword = input.type === 'password';
+					input.type = isPassword ? 'text' : 'password';
+					icon.setAttribute('data-lucide', isPassword ? 'eye-off' : 'eye');
+					lucide.createIcons();
+				},
+
+				toggleOwnerPassword() {
+					const input = document.getElementById('ownerPassword');
+					const icon = document.getElementById('ownerPasswordIcon');
+					if (!input) return;
+					const isPassword = input.type === 'password';
+					input.type = isPassword ? 'text' : 'password';
+					icon.setAttribute('data-lucide', isPassword ? 'eye-off' : 'eye');
+					lucide.createIcons();
+				},
+
+				handleLogin() {
+					const name = document.getElementById('loginName')?.value.trim();
+					const password = document.getElementById('loginPassword')?.value;
+
+					if (!name || !password) {
+						this._showLoginError('Please enter name and password');
+						return;
+					}
+
+					const users = JSON.parse(localStorage.getItem('atelier_users') || '[]');
+					const user = users.find(u => u.name === name && u.password === password);
+
+					if (!user) {
+						this._showLoginError('Invalid name or password');
+						return;
+					}
+
+					const memberships = JSON.parse(localStorage.getItem('atelier_memberships') || '[]');
+					const membership = memberships.find(m => m.userId === user.id && m.status === 'active');
+
+					if (!membership) {
+						this._showLoginError('No active organization');
+						return;
+					}
+
+					const session = {
+						userId: user.id,
+						organizationId: membership.organizationId,
+						membershipId: membership.id,
+						createdAt: new Date().toISOString()
+					};
+					localStorage.setItem('atelier_session', JSON.stringify(session));
+					AppState.session = session;
+
+					AppUI.updateAccountUI();
+					AppUI.updateAuthHeader();
+					this.showLoggedInView();
+					AppUI.closeAccountPopover();
+					Utils.showToast('Signed in as ' + user.name);
+				},
+
+				handleCreateOrganization() {
+					const orgName = document.getElementById('organizationName')?.value.trim();
+					const ownerName = document.getElementById('ownerName')?.value.trim();
+					const ownerEmail = document.getElementById('ownerEmail')?.value.trim().toLowerCase();
+					const ownerPassword = document.getElementById('ownerPassword')?.value;
+
+					if (!orgName || !ownerName || !ownerEmail || !ownerPassword) {
+						alert('Please complete all fields');
+						return;
+					}
+
+					if (ownerPassword.length < 6) {
+						alert('Password must be at least 6 characters');
+						return;
+					}
+
+					const users = JSON.parse(localStorage.getItem('atelier_users') || '[]');
+					if (users.find(u => u.email.toLowerCase() === ownerEmail)) {
+						alert('Email already exists');
+						return;
+					}
+
+					const userId = 'usr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+					const orgId = 'org_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+					const membershipId = 'mem_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+
+					const user = { id: userId, name: ownerName, email: ownerEmail, password: ownerPassword, createdAt: new Date().toISOString() };
+					const org = { id: orgId, name: orgName, ownerId: userId, createdAt: new Date().toISOString() };
+					const membership = { id: membershipId, userId, organizationId: orgId, role: 'owner', status: 'active', createdAt: new Date().toISOString() };
+
+					users.push(user);
+					localStorage.setItem('atelier_users', JSON.stringify(users));
+					localStorage.setItem('atelier_organizations', JSON.stringify([...(JSON.parse(localStorage.getItem('atelier_organizations') || '[]')), org]));
+					localStorage.setItem('atelier_memberships', JSON.stringify([...(JSON.parse(localStorage.getItem('atelier_memberships') || '[]')), membership]));
+
+					const session = { userId, organizationId: orgId, membershipId, createdAt: new Date().toISOString() };
+					localStorage.setItem('atelier_session', JSON.stringify(session));
+					AppState.session = session;
+
+					AppUI.updateAccountUI();
+					AppUI.updateAuthHeader();
+					this.showLoggedInView();
+					AppUI.closeAccountPopover();
+					Utils.showToast('Organization created! Welcome aboard.');
+				},
+
+				handleJoinWithInvitation() {
+					const code = document.getElementById('invitationCode')?.value.trim();
+					if (!code) {
+						alert('Enter your invitation code');
+						return;
+					}
+					const invitations = JSON.parse(localStorage.getItem('atelier_invitations') || '[]');
+					const invitation = invitations.find(i => i.id === code && i.status === 'pending');
+
+					if (!invitation) {
+						alert('Invalid or expired invitation code');
+						return;
+					}
+
+					if (invitation.expiresAt && new Date(invitation.expiresAt) < new Date()) {
+						invitation.status = 'expired';
+						localStorage.setItem('atelier_invitations', JSON.stringify(invitations));
+						alert('This invitation has expired');
+						return;
+					}
+
+					// Create account for invited user
+					const name = document.getElementById('invitationCode')?.value.trim(); // Will be replaced with actual name entry
+					const users = JSON.parse(localStorage.getItem('atelier_users') || '[]');
+					const user = {
+						id: 'usr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+						name: invitation.name || 'New User',
+						email: invitation.email,
+						password: '', // Will be set in onboarding
+						createdAt: new Date().toISOString()
+					};
+
+					const membershipId = 'mem_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+					const membership = {
+						id: membershipId,
+						userId: user.id,
+						organizationId: invitation.organizationId,
+						role: invitation.role,
+						status: 'active',
+						createdAt: new Date().toISOString()
+					};
+
+					users.push(user);
+					localStorage.setItem('atelier_users', JSON.stringify(users));
+
+					const memberships = JSON.parse(localStorage.getItem('atelier_memberships') || '[]');
+					memberships.push(membership);
+					localStorage.setItem('atelier_memberships', JSON.stringify(memberships));
+
+					invitation.status = 'accepted';
+					invitation.acceptedAt = new Date().toISOString();
+					localStorage.setItem('atelier_invitations', JSON.stringify(invitations));
+
+					const session = { userId: user.id, organizationId: invitation.organizationId, membershipId, createdAt: new Date().toISOString() };
+					localStorage.setItem('atelier_session', JSON.stringify(session));
+					AppState.session = session;
+
+					AppUI.updateAccountUI();
+					AppUI.updateAuthHeader();
+					this.showLoggedInView();
+					AppUI.closeAccountPopover();
+					Utils.showToast('Joined organization as ' + invitation.role);
+				},
+
+				handleJoinWithOrganizationCode() {
+					alert('Organization join code feature coming soon. Ask your admin for an invitation code.');
+				},
+
+				handleSendStaffInvitation() {
+					const name = document.getElementById('inviteStaffName')?.value.trim();
+					const email = document.getElementById('inviteStaffEmail')?.value.trim().toLowerCase();
+					const role = document.getElementById('inviteStaffRole')?.value;
+
+					if (!name || !email || !role) {
+						alert('Please complete all fields');
+						return;
+					}
+
+					const invitationId = 'inv_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+					const invitation = {
+						id: invitationId,
+						name,
+						email,
+						role,
+						organizationId: AppState.session.organizationId,
+						status: 'pending',
+						createdAt: new Date().toISOString(),
+						expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+					};
+
+					const invitations = JSON.parse(localStorage.getItem('atelier_invitations') || '[]');
+					invitations.push(invitation);
+					localStorage.setItem('atelier_invitations', JSON.stringify(invitations));
+
+					Utils.showToast('Invitation sent to ' + email);
+					document.getElementById('inviteStaffName').value = '';
+					document.getElementById('inviteStaffEmail').value = '';
+					this.showTeamView();
+				},
+
+				renderTeamView() {
+					if (!AppState.session) return;
+					const organizations = JSON.parse(localStorage.getItem('atelier_organizations') || '[]');
+					const users = JSON.parse(localStorage.getItem('atelier_users') || '[]');
+					const memberships = JSON.parse(localStorage.getItem('atelier_memberships') || '[]');
+					const invitations = JSON.parse(localStorage.getItem('atelier_invitations') || '[]');
+
+					const org = organizations.find(o => o.id === AppState.session.organizationId);
+					document.getElementById('teamOrgName').textContent = org?.name || 'Organization';
+
+					const members = memberships.filter(m => m.organizationId === AppState.session.organizationId && m.status === 'active').map(m => ({
+						...m,
+						user: users.find(u => u.id === m.userId)
+					})).filter(m => m.user);
+
+					const membersList = document.getElementById('teamMembersList');
+					membersList.innerHTML = members.map(m => {
+						const initials = m.user.name.split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase();
+						const roleLabel = m.role.charAt(0).toUpperCase() + m.role.slice(1);
+						const roleBadgeClass = `role-${m.role}`;
+						return `
+							<div class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-stone-50 transition">
+								<div class="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center shrink-0">
+									<span class="text-[10px] font-semibold text-stone-600">${initials}</span>
+								</div>
+								<div class="min-w-0 flex-1">
+									<p class="text-xs font-medium text-stone-800 truncate">${Utils.escapeHtml(m.user.name)}</p>
+									<p class="text-[9px] text-stone-400 truncate">${Utils.escapeHtml(m.user.email)}</p>
+								</div>
+								<span class="role-badge ${roleBadgeClass}">${roleLabel}</span>
+							</div>
+						`;
+					}).join('');
+
+					const pending = invitations.filter(i => i.organizationId === AppState.session.organizationId && i.status === 'pending' && (!i.expiresAt || new Date(i.expiresAt) > new Date()));
+					const section = document.getElementById('pendingInvitationsSection');
+					const list = document.getElementById('pendingInvitationsList');
+					const count = document.getElementById('pendingInvitationCount');
+
+					if (!pending.length) {
+						section.classList.add('hidden');
+					} else {
+						section.classList.remove('hidden');
+						count.textContent = pending.length;
+						list.innerHTML = pending.map(inv => {
+							const roleLabel = inv.role.charAt(0).toUpperCase() + inv.role.slice(1);
+							const roleBadgeClass = `role-${inv.role}`;
+							return `
+								<div class="p-2.5 rounded-xl border border-stone-200 bg-white">
+									<div class="flex items-center gap-2.5">
+										<div class="w-8 h-8 rounded-full bg-stone-50 border border-stone-200 flex items-center justify-center">
+											<i class="w-3.5 h-3.5 text-stone-400" data-lucide="mail"></i>
+										</div>
+										<div class="min-w-0 flex-1">
+											<p class="text-xs font-medium text-stone-800 truncate">${Utils.escapeHtml(inv.name)}</p>
+											<p class="text-[9px] text-stone-400 truncate">${Utils.escapeHtml(inv.email)}</p>
+										</div>
+										<span class="role-badge ${roleBadgeClass}">${roleLabel}</span>
+									</div>
+									<div class="mt-2 px-2.5 py-1.5 rounded-lg bg-stone-50">
+										<p class="text-[9px] text-stone-400">Code</p>
+										<p class="text-[10px] font-mono font-medium text-stone-600 break-all">${inv.id}</p>
+									</div>
+								</div>
+							`;
+						}).join('');
+					}
+				},
+
+				logout() {
+					localStorage.removeItem('atelier_session');
+					AppState.session = null;
+					AppState.cart = {};
+					AppRender.cart();
+					AppUI.updateAccountUI();
+					AppUI.hideAuthHeader();
+					this.showLoggedOutView();
+					AppUI.closeAccountPopover();
+					Utils.showToast('Signed out');
+				},
+
+				_showLoginError(msg) {
+					const errorEl = document.getElementById('loginError');
+					document.getElementById('loginErrorText').textContent = msg;
+					errorEl.classList.remove('hidden');
+					setTimeout(() => errorEl.classList.add('hidden'), 4000);
+				}
+			};
+
+			// ========================================
+			// CONFIGURATION & ZOHO INTEGRATION
+			// ========================================
+
+			const AppConfig = {
+				async save() {
+					AppState.zohoCfg = {
+						region: document.getElementById('cfgRegion').value,
+						org: document.getElementById('cfgOrg').value.trim(),
+						clientId: document.getElementById('cfgClientId').value.trim(),
+						secret: document.getElementById('cfgSecret').value.trim(),
+						refresh: document.getElementById('cfgRefresh').value.trim()
+					};
+
+					if (!AppState.zohoCfg.org || !AppState.zohoCfg.clientId || !AppState.zohoCfg.secret || !AppState.zohoCfg.refresh) {
+						document.getElementById('connStatus').innerHTML = '<span class="text-rose-600">All fields required</span>';
+						return;
+					}
+
+					document.getElementById('connStatus').textContent = 'Testing connection…';
+					try {
+						const res = await fetch(APP_CONFIG.API_URL + '/api/zoho/test', {
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify(AppState.zohoCfg)
+						});
+						const data = await res.json();
+
+						if (res.ok) {
+							localStorage.setItem('zoho_pos_cfg', JSON.stringify(AppState.zohoCfg));
+							document.getElementById('connStatus').innerHTML = '<span class="text-emerald-600">Connected: ' + data.org_name + '</span>';
+							AppUI.updateZohoBadge(true, data.org_name);
+							setTimeout(() => AppUI.toggleSettings(), 800);
+							AppPOS.loadZohoItems();
+						} else {
+							document.getElementById('connStatus').innerHTML = '<span class="text-rose-600">' + (data.message || 'Connection failed') + '</span>';
+						}
+					} catch (e) {
+						document.getElementById('connStatus').innerHTML = '<span class="text-rose-600">Cannot reach server</span>';
+					}
+				}
+			};
+
+			// ========================================
+			// SCANNER FUNCTIONALITY
+			// ========================================
+
+			const AppScanner = {
+				isScanning: false,
+
+				toggle() {
+					this.isScanning ? this.stop() : this.start();
+				},
+
+				start() {
+					const scannerView = document.getElementById('scannerView');
+					const label = document.getElementById('scan-btn-label');
+					scannerView.classList.remove('hidden');
+					if (label) label.textContent = 'Stop';
+					this.isScanning = true;
+
+					Quagga.init({
+						inputStream: {
+							name: 'Live',
+							type: 'LiveStream',
+							target: scannerView,
+							constraints: { facingMode: { ideal: 'environment' }, width: { min: 640 }, height: { min: 480 } }
+						},
+						locator: { patchSize: 'medium', halfSample: true },
+						numOfWorkers: navigator.hardwareConcurrency || 4,
+						decoder: { readers: ['ean_reader', 'ean_8_reader', 'upc_reader', 'code_128_reader', 'code_39_reader'] },
+						locate: true
+					}, (err) => {
+						if (err) {
+							Utils.showToast('Camera error: ' + err.message, true);
+							this.stop();
+							return;
+						}
+						Quagga.start();
+					});
+
+					Quagga.offDetected();
+					Quagga.onDetected((data) => {
+						if (!data?.codeResult?.code) return;
+						this.stop();
+						AppPOS.processBarcode(data.codeResult.code);
+					});
+				},
+
+				stop() {
+					try { Quagga.stop(); } catch (e) {}
+					this.isScanning = false;
+					document.getElementById('scannerView').classList.add('hidden');
+					const label = document.getElementById('scan-btn-label');
+					if (label) label.textContent = 'Camera';
+				}
+			};
+
+			// ========================================
+			// POS OPERATIONS (Cart, Checkout, etc.)
+			// ========================================
+
+			const AppPOS = {
+				processBarcode(code) {
+					const item = AppState.inventory.find(i => i.barcode === code || i.sku === code);
+					if (!item) {
+						Utils.showToast('Unknown barcode: ' + code, true);
+						this.flashFeedback('ERROR', 'No match: ' + code, '', 0);
+						return;
+					}
+
+					if (!this.isStockCheckBypassed() && item.stock <= 0) {
+						Utils.showToast('"' + item.name + '" is OUT OF STOCK', true);
+						this.flashFeedback('DEPLETED', item.name, Utils.formatNaira(item.price), 0);
+						return;
+					}
+
+					const key = item.barcode || item.sku;
+					AppState.cart[key] = AppState.cart[key] || {
+						item_id: item.item_id,
+						name: item.name,
+						price: item.price,
+						qty: 0,
+						deducted: 0
+					};
+
+					AppState.cart[key].qty++;
+					if (item.stock > 0) {
+						item.stock--;
+						AppState.cart[key].deducted++;
+					}
+
+					this.flashFeedback('DETECTED', item.name + ' (' + key + ')', Utils.formatNaira(item.price), AppState.cart[key].qty);
+					AppRender.inventory();
+					AppRender.cart();
+					Utils.showToast(item.name + (this.isStockCheckBypassed() ? ' added (validation off)' : ' — stock now ' + item.stock));
+
+					if (!this.isStockCheckBypassed() && item.stock <= 10) {
+						Utils.showToast('Low stock: ' + item.name + ' (' + item.stock + ' left)', true);
+					}
+				},
+
+				manualLookup() {
+					const v = document.getElementById('manualBarcode').value.trim();
+					if (v) {
+						this.processBarcode(v);
+						document.getElementById('manualBarcode').value = '';
+					}
+				},
+
+				isStockCheckBypassed() {
+					return document.getElementById('ignoreStockToggle').checked;
+				},
+
+				flashFeedback(badge, title, price, qty) {
+					const badgeEl = document.getElementById('fb-badge');
+					badgeEl.textContent = badge;
+					badgeEl.className = 'inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-medium border shrink-0 ' + (badge === 'DETECTED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : badge === 'ERROR' || badge === 'DEPLETED' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-stone-100 text-stone-500 border-stone-200');
+					document.getElementById('recent-item-title').textContent = title;
+					document.getElementById('recent-item-price').textContent = price;
+					document.getElementById('recent-qty-pill').textContent = qty;
+				},
+
+				increaseQty(code) {
+					const item = AppState.inventory.find(i => i.barcode === code || i.sku === code);
+					if (!item || !AppState.cart[code]) return;
+					if (!this.isStockCheckBypassed() && item.stock <= 0) return Utils.showToast('No more "' + item.name + '" in stock', true);
+
+					AppState.cart[code].qty++;
+					if (item.stock > 0) {
+						item.stock--;
+						AppState.cart[code].deducted++;
+					}
+
+					this.flashFeedback('DETECTED', item.name + ' (' + code + ')', Utils.formatNaira(item.price), AppState.cart[code].qty);
+					AppRender.inventory();
+					AppRender.cart();
+				},
+
+				decreaseQty(code) {
+					const item = AppState.inventory.find(i => i.barcode === code || i.sku === code);
+					if (!item || !AppState.cart[code]) return;
+
+					AppState.cart[code].qty--;
+					if (AppState.cart[code].deducted > 0) {
+						item.stock++;
+						AppState.cart[code].deducted--;
+					}
+
+					if (AppState.cart[code].qty <= 0) delete AppState.cart[code];
+					AppRender.inventory();
+					AppRender.cart();
+				},
+
+				removeItem(code) {
+					const item = AppState.inventory.find(i => i.barcode === code || i.sku === code);
+					if (item && AppState.cart[code].deducted > 0) item.stock += AppState.cart[code].deducted;
+					delete AppState.cart[code];
+					AppRender.inventory();
+					AppRender.cart();
+				},
+
+				clearCart() {
+					Object.keys(AppState.cart).forEach(c => {
+						const item = AppState.inventory.find(i => i.barcode === c || i.sku === c);
+						if (item && AppState.cart[c].deducted > 0) item.stock += AppState.cart[c].deducted;
+					});
+					AppState.cart = {};
+					AppRender.inventory();
+					AppRender.cart();
+				},
+
+				async checkout() {
+					const codes = Object.keys(AppState.cart);
+					if (!codes.length) return Utils.showToast('Cart is empty', true);
+
+					const qty = AppState.getCartQtyTotal();
+					const total = AppState.getCartTotalWithTax();
+
+					if (AppState.zohoCfg) {
+						try {
+							const res = await fetch(APP_CONFIG.API_URL + '/api/zoho/adjustment', {
+								method: 'POST',
+								headers: { 'Content-Type': 'application/json' },
+								body: JSON.stringify({
+									cfg: AppState.zohoCfg,
+									reason: 'POS Sale',
+									line_items: codes.map(c => ({ item_id: AppState.cart[c].item_id, quantity_adjusted: -AppState.cart[c].qty, name: AppState.cart[c].name }))
+								})
+							});
+							const data = await res.json();
+							if (!res.ok) return Utils.showToast('Zoho: ' + (data.message || 'adjustment failed'), true);
+						} catch (e) {
+							return Utils.showToast('Cannot reach server', true);
+						}
+					}
+
+					const sale = { id: AppState.cartTxSeq++, items: qty, total };
+					AppState.txLog.push(sale);
+					AppState.cart = {};
+					AppState.save();
+
+					AppRender.inventory();
+					AppRender.cart();
+					AppRender.transactions();
+
+					if (Utils.isMobile()) AppUI.closeCartSheet();
+					AppUI.showSuccessReceipt(sale);
+					Utils.showToast('Sale completed — stock deducted' + (AppState.zohoCfg ? ' · Zoho synced' : ''));
+
+					if (AppState.zohoCfg) this.loadZohoItems();
+				},
+
+				async loadZohoItems() {
+					if (!AppState.zohoCfg) {
+						Utils.showToast('Configure Zoho in Settings first', true);
+						AppUI.toggleSettings();
+						return;
+					}
+
+					try {
+						const res = await fetch(APP_CONFIG.API_URL + '/api/zoho/items', {
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify(AppState.zohoCfg)
+						});
+						const data = await res.json();
+						if (!res.ok) return Utils.showToast('Zoho: ' + (data.message || 'load failed'), true);
+
+						AppState.inventory = data;
+						AppState.save();
+						AppRender.inventory();
+						Utils.showToast('Loaded ' + data.length + ' items from Zoho');
+					} catch (e) {
+						Utils.showToast('Cannot reach server', true);
+					}
+				},
+
+				async flashReload() {
+					const icon = document.getElementById('refresh-icon');
+					icon.classList.add('animate-spin');
+					try {
+						if (AppState.zohoCfg) {
+							await this.loadZohoItems();
+						} else {
+							AppRender.inventory();
+						}
+					} finally {
+						icon.classList.remove('animate-spin');
+					}
+				}
+			};
+
+			// ========================================
+			// RENDERING ENGINE
+			// ========================================
+
+			const AppRender = {
+				inventory() {
+					const tb = document.getElementById('invBody');
+					tb.innerHTML = '';
+					AppState.inventory.forEach(i => {
+						const isUnavailable = i.stock <= 0;
+						const tr = document.createElement('tr');
+						tr.className = 'hover:bg-[#fbfbf9] transition-colors group cursor-pointer';
+						tr.onclick = () => AppUI.openItemModal(i.barcode || i.sku);
+						tr.innerHTML = `
+							<td class="py-3 px-4 font-mono text-[12px] text-stone-500">${i.barcode || i.sku || '—'}</td>
+							<td class="py-3 px-4">
+								<div class="flex items-center space-x-2.5">
+									<div class="w-6 h-6 rounded hairline-all bg-stone-50 flex items-center justify-center text-stone-500 shrink-0">
+										<i class="w-3.5 h-3.5" data-lucide="package"></i>
+									</div>
+									<div class="font-medium ${isUnavailable ? 'text-stone-400' : 'text-stone-900'}">${i.name}</div>
+								</div>
+							</td>
+							<td class="py-3 px-4 text-right font-mono tabular-nums text-[13px] font-medium ${isUnavailable ? 'text-stone-400' : 'text-stone-900'}">${Utils.formatNaira(i.price)}</td>
+							<td class="py-3 px-4 text-center font-mono tabular-nums text-[12px] ${i.stock <= 10 && i.stock > 0 ? 'text-amber-700 font-semibold' : isUnavailable ? 'text-stone-400' : 'text-stone-600'}">${i.stock}</td>
+							<td class="py-3 px-4 text-center">${this._stockBadge(i)}</td>
+							<td class="py-3 px-4 text-right" onclick="event.stopPropagation()">
+								${isUnavailable ? '<button disabled class="px-2.5 py-1 text-xs text-stone-300 cursor-not-allowed">Unavailable</button>' : `<button onclick="AppPOS.processBarcode('${i.barcode || i.sku}')" class="px-2.5 py-1 text-xs font-medium text-stone-700 bg-white hover:bg-stone-900 hover:text-white hairline-all rounded transition">+ Add</button>`}
+							</td>
+						`;
+						tb.appendChild(tr);
+					});
+
+					const cards = document.getElementById('invCards');
+					cards.innerHTML = '';
+					AppState.inventory.forEach(i => {
+						const isUnavailable = i.stock <= 0;
+						const div = document.createElement('div');
+						div.className = 'p-3.5 flex items-center gap-3 active:bg-stone-50 transition';
+						div.onclick = () => AppUI.openItemModal(i.barcode || i.sku);
+						div.innerHTML = `
+							<div class="w-10 h-10 rounded-lg hairline-all bg-stone-50 flex items-center justify-center text-stone-500 shrink-0">
+								<i class="w-4 h-4" data-lucide="package"></i>
+							</div>
+							<div class="flex-1 min-w-0">
+								<div class="text-[13px] font-medium truncate ${isUnavailable ? 'text-stone-400' : 'text-stone-900'}">${i.name}</div>
+								<div class="flex items-center gap-2 mt-1">
+									<span class="font-mono text-[11px] text-stone-400">${i.barcode || i.sku || '—'}</span>
+									${this._stockBadge(i)}
+								</div>
+								<div class="mt-1 font-mono text-sm font-semibold ${isUnavailable ? 'text-stone-400' : 'text-stone-900'}">${Utils.formatNaira(i.price)}</div>
+							</div>
+							${isUnavailable ? '<span class="text-[11px] text-stone-300 shrink-0">N/A</span>' : `<button onclick="event.stopPropagation(); AppPOS.processBarcode('${i.barcode || i.sku}')" class="w-9 h-9 rounded-lg bg-stone-900 text-white flex items-center justify-center shrink-0 active:scale-90 transition"><i class="w-4 h-4" data-lucide="plus"></i></button>`}
+						`;
+						cards.appendChild(div);
+					});
+
+					document.getElementById('invCount').textContent = AppState.inventory.length + ' items';
+					document.getElementById('invCountMobile').textContent = AppState.inventory.length + ' items';
+
+					const low = AppState.inventory.filter(i => i.stock <= 10 && i.stock > 0);
+					document.getElementById('lowstock-hint').textContent = low.length ? low.length + ' low-stock' : '';
+
+					lucide.createIcons();
+				},
+
+				cart() {
+					const codes = Object.keys(AppState.cart);
+					const desktop = document.getElementById('cartBody');
+					const mobile = document.getElementById('cartBodyMobile');
+
+					const html = codes.length ? codes.map(c => this._cartLineHTML(c)).join('') : this._emptyCartHTML();
+					desktop.innerHTML = html;
+					mobile.innerHTML = html;
+
+					const qty = AppState.getCartQtyTotal();
+					const sub = AppState.getCartTotal();
+					const tax = sub * APP_CONFIG.TAX_RATE;
+					const grand = sub + tax;
+
+					document.getElementById('tQty').textContent = `${qty} units (${codes.length} unique)`;
+					document.getElementById('tSub').textContent = Utils.formatNaira(sub);
+					document.getElementById('tTax').textContent = Utils.formatNaira(tax);
+					document.getElementById('tTotal').textContent = Utils.formatNaira(grand);
+					document.getElementById('btn-total-preview').textContent = Utils.formatNaira(grand);
+					document.getElementById('mSub').textContent = Utils.formatNaira(sub);
+					document.getElementById('mTax').textContent = Utils.formatNaira(tax);
+					document.getElementById('mTotal').textContent = Utils.formatNaira(grand);
+					document.getElementById('mBtnTotal').textContent = Utils.formatNaira(grand);
+
+					document.getElementById('desktopTicketNum').textContent = AppState.cartTxSeq;
+					document.getElementById('mobileTicketNum').textContent = AppState.cartTxSeq;
+
+					const badge = document.getElementById('cart-count-badge');
+					badge.textContent = qty;
+					badge.classList.toggle('hidden', qty === 0);
+
+					lucide.createIcons();
+				},
+
+				transactions() {
+					const label = document.getElementById('lastTxLabel');
+					if (!AppState.txLog.length) {
+						label.textContent = 'Last: —';
+						return;
+					}
+					const last = AppState.txLog[AppState.txLog.length - 1];
+					label.textContent = `Last: #${last.id} (${Utils.formatNaira(last.total)})`;
+				},
+
+				history() {
+					const list = document.getElementById('historyList');
+					if (!AppState.txLog.length) {
+						list.innerHTML = '<div class="text-center py-12 text-stone-400"><i class="w-8 h-8 mx-auto stroke-[1.5]" data-lucide="receipt-text"></i><p class="text-xs mt-2">No sales recorded yet</p></div>';
+					} else {
+						list.innerHTML = [...AppState.txLog].reverse().map(t => `
+							<div class="p-3.5 hairline-all rounded-xl bg-white flex items-center justify-between">
+								<div>
+									<div class="text-xs font-semibold text-stone-900">Sale #${t.id}</div>
+									<div class="text-[11px] text-stone-400 mt-0.5">${t.items} unit(s)</div>
+								</div>
+								<div class="font-mono text-sm font-semibold text-emerald-700">${Utils.formatNaira(t.total)}</div>
+							</div>`).join('');
+					}
+					lucide.createIcons();
+				},
+
+				_cartLineHTML(code) {
+					const item = AppState.cart[code];
+					return `
+						<div class="bg-stone-50/70 hairline-all rounded-lg overflow-hidden">
+							<div class="p-2.5 flex items-start justify-between gap-2">
+								<div class="min-w-0">
+									<div class="text-xs font-medium text-stone-900 leading-snug">${item.name}</div>
+									<div class="text-[11px] text-stone-400 font-mono tabular-nums mt-0.5">${Utils.formatNaira(item.price)} × ${item.qty}</div>
+								</div>
+								<div class="flex flex-col items-end gap-1 shrink-0">
+									<div class="font-mono text-xs font-medium text-stone-900 tabular-nums">${Utils.formatNaira(item.price * item.qty)}</div>
+									<button onclick="AppUI.confirmRemoveItem('${code}')" class="text-stone-300 hover:text-rose-600 transition" title="Remove line">
+										<i class="w-3.5 h-3.5" data-lucide="trash-2"></i>
+									</button>
+								</div>
+							</div>
+							<div class="flex items-center justify-between px-2.5 pb-2 pt-1.5 hairline-t bg-white/50">
+								<span class="text-[10px] uppercase font-mono tracking-wider text-stone-400">Qty</span>
+								<div class="inline-flex items-center hairline-all rounded bg-white overflow-hidden">
+									<button onclick="AppPOS.decreaseQty('${code}')" class="w-9 h-8 text-stone-500 hover:bg-stone-100 hover:text-stone-900 font-mono text-base transition">−</button>
+									<span class="px-3 font-mono font-medium text-stone-900 text-xs tabular-nums">${item.qty}</span>
+									<button onclick="AppPOS.increaseQty('${code}')" class="w-9 h-8 text-stone-500 hover:bg-stone-100 hover:text-stone-900 font-mono text-base transition">+</button>
+								</div>
+							</div>
+						</div>`;
+				},
+
+				_emptyCartHTML() {
+					return `
+						<div class="h-full flex-col items-center justify-center text-center p-6 space-y-3 my-auto">
+							<div class="w-12 h-12 rounded-full hairline-all bg-stone-50 flex items-center justify-center text-stone-400">
+								<i class="w-5 h-5 stroke-[1.5]" data-lucide="shopping-bag"></i>
+							</div>
+							<div>
+								<p class="text-xs font-semibold text-stone-800 tracking-tight">Your sale ticket is empty</p>
+								<p class="text-[11px] text-stone-400 max-w-[210px] mt-1 leading-normal">Scan a barcode or select from the catalog.</p>
+							</div>
+						</div>`;
+				},
+
+				_stockBadge(i) {
+					if (i.stock === 0) return '<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-stone-100 text-stone-400">Depleted</span>';
+					if (i.stock <= 10) return '<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200">Low · ' + i.stock + '</span>';
+					return '<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-stone-100 text-stone-700">In Stock</span>';
+				}
+			};
+
+			// ========================================
+			// UI MANAGEMENT & MODALS
+			// ========================================
+
+			const AppUI = {
+				toggleAccountPopover() {
+					const popover = document.getElementById('accountPopover');
+					popover.classList.toggle('hidden');
+					if (!popover.classList.contains('hidden')) {
+						if (AppState.session) {
+							AppAuth.showLoggedInView();
+						} else {
+							AppAuth.showLoggedOutView();
+						}
+					}
+				},
+
+				closeAccountPopover() {
+					document.getElementById('accountPopover')?.classList.add('hidden');
+				},
+
+				toggleSettings() {
+					const m = document.getElementById('settingsModal');
+					if (!m.classList.contains('hidden')) {
+						m.classList.add('hidden');
+						m.classList.remove('flex');
+						return;
+					}
+					if (AppState.zohoCfg) {
+						document.getElementById('cfgRegion').value = AppState.zohoCfg.region;
+						document.getElementById('cfgOrg').value = AppState.zohoCfg.org;
+						document.getElementById('cfgClientId').value = AppState.zohoCfg.clientId;
+						document.getElementById('cfgSecret').value = AppState.zohoCfg.secret;
+						document.getElementById('cfgRefresh').value = AppState.zohoCfg.refresh;
+					}
+					m.classList.remove('hidden');
+					m.classList.add('flex');
+				},
+
+				updateZohoBadge(connected, name) {
+					const dot = document.getElementById('zoho-dot');
+					const pulse = document.getElementById('zoho-dot-pulse');
+					const banner = document.getElementById('offline-banner');
+
+					if (connected) {
+						dot.className = 'relative inline-flex rounded-full h-2 w-2 bg-emerald-500';
+						pulse.className = 'status-dot-pulse absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75';
+						document.getElementById('zohoBadge').textContent = 'Zoho: ' + name;
+						banner.classList.add('hidden');
+						banner.classList.remove('flex');
+					} else {
+						dot.className = 'relative inline-flex rounded-full h-2 w-2 bg-stone-400';
+						pulse.className = 'status-dot-pulse absolute inline-flex h-full w-full rounded-full bg-stone-400 opacity-75';
+						document.getElementById('zohoBadge').textContent = 'Zoho: Not connected';
+						banner.classList.remove('hidden');
+						banner.classList.add('flex');
+					}
+				},
+
+				updateAccountUI() {
+					const avatar = document.getElementById('accountAvatar');
+					const name = document.getElementById('accountName');
+
+					if (!AppState.session) {
+						if (avatar) avatar.innerHTML = '<i class="w-3.5 h-3.5" data-lucide="user"></i>';
+						if (name) name.textContent = 'Sign in';
+						lucide.createIcons();
+						return;
+					}
+
+					const users = JSON.parse(localStorage.getItem('atelier_users') || '[]');
+					const user = users.find(u => u.id === AppState.session.userId);
+
+					if (!user) {
+						localStorage.removeItem('atelier_session');
+						AppState.session = null;
+						this.updateAccountUI();
+						return;
+					}
+
+					const initials = user.name.split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase();
+					if (avatar) avatar.innerHTML = initials;
+					if (name) name.textContent = user.name;
+					lucide.createIcons();
+				},
+
+				updateAuthHeader() {
+					if (!AppState.session) {
+						this.hideAuthHeader();
+						return;
+					}
+
+					const users = JSON.parse(localStorage.getItem('atelier_users') || '[]');
+					const user = users.find(u => u.id === AppState.session.userId);
+					const orgs = JSON.parse(localStorage.getItem('atelier_organizations') || '[]');
+					const org = orgs.find(o => o.id === AppState.session.organizationId);
+					const memberships = JSON.parse(localStorage.getItem('atelier_memberships') || '[]');
+					const membership = memberships.find(m => m.id === AppState.session.membershipId && m.status === 'active');
+
+					if (user && org && membership) {
+						document.getElementById('userDisplayName').textContent = user.name;
+						document.getElementById('orgName').textContent = org.name;
+						const roleEl = document.getElementById('userRole');
+						roleEl.textContent = membership.role.charAt(0).toUpperCase() + membership.role.slice(1);
+						roleEl.className = `role-badge role-${membership.role}`;
+						document.getElementById('authHeaderInfo').classList.remove('hidden');
+					}
+				},
+
+				hideAuthHeader() {
+					document.getElementById('authHeaderInfo').classList.add('hidden');
+				},
+
+				confirmCheckout() {
+					const codes = Object.keys(AppState.cart);
+					if (!codes.length) return Utils.showToast('Cart is empty', true);
+
+					const qty = AppState.getCartQtyTotal();
+					const total = AppState.getCartTotalWithTax();
+					this.showConfirm('Complete this sale?', `Total ${qty} unit(s) · ${Utils.formatNaira(total)}. Stock will be deducted.`, 'Charge ' + Utils.formatNaira(total), 'check-circle', 'bg-emerald-50', () => AppPOS.checkout());
+				},
+
+				confirmClearCart() {
+					if (!Object.keys(AppState.cart).length) return;
+					this.showConfirm('Clear ticket?', 'All items will be removed.', 'Clear Cart', 'trash-2', 'bg-rose-50', () => {
+						AppPOS.clearCart();
+						if (Utils.isMobile()) this.closeCartSheet();
+					});
+				},
+
+				confirmRemoveItem(code) {
+					this.showConfirm('Remove item?', `"${AppState.cart[code].name}" will be removed.`, 'Remove', 'trash-2', 'bg-rose-50', () => AppPOS.removeItem(code));
+				},
+
+				showConfirm(title, msg, okLabel, icon, iconBg, callback) {
+					document.getElementById('confirmTitle').textContent = title;
+					document.getElementById('confirmMsg').textContent = msg;
+					document.getElementById('confirmOkBtn').textContent = okLabel;
+					document.getElementById('confirmIcon').className = 'w-12 h-12 rounded-full mx-auto flex items-center justify-center mb-3 ' + iconBg;
+					document.getElementById('confirmIcon').innerHTML = `<i class="w-5 h-5 ${iconBg.includes('amber') ? 'text-amber-600' : 'text-rose-600'}" data-lucide="${icon}"></i>`;
+					AppState.confirmCallback = callback;
+					const m = document.getElementById('confirmModal');
+					m.classList.remove('hidden');
+					m.classList.add('flex');
+					lucide.createIcons();
+				},
+
+				closeConfirm(ok) {
+					const m = document.getElementById('confirmModal');
+					m.classList.add('hidden');
+					m.classList.remove('flex');
+					if (ok && AppState.confirmCallback) AppState.confirmCallback();
+					AppState.confirmCallback = null;
+				},
+
+				showSuccessReceipt(sale) {
+					document.getElementById('receiptDetails').innerHTML = `
+						<div class="flex justify-between"><span class="text-stone-500">Sale ID</span><span class="font-mono font-medium">#${sale.id}</span></div>
+						<div class="flex justify-between"><span class="text-stone-500">Units</span><span class="font-mono font-medium">${sale.items}</span></div>
+						<div class="flex justify-between hairline-t pt-1.5"><span class="text-stone-500">Total Charged</span><span class="font-mono font-bold text-emerald-700">${Utils.formatNaira(sale.total)}</span></div>
+						<div class="flex justify-between"><span class="text-stone-500">Mode</span><span class="font-mono font-medium">${AppState.zohoCfg ? 'Zoho Synced' : 'Local'}</span></div>`;
+					const m = document.getElementById('successModal');
+					m.classList.remove('hidden');
+					m.classList.add('flex');
+					lucide.createIcons();
+				},
+
+				closeSuccess() {
+					const m = document.getElementById('successModal');
+					m.classList.add('hidden');
+					m.classList.remove('flex');
+				},
+
+				openItemModal(code) {
+					const item = AppState.inventory.find(i => i.barcode === code || i.sku === code);
+					if (!item) return;
+					AppState.itemModalCode = code;
+
+					document.getElementById('itemModalName').textContent = item.name || 'Unnamed Item';
+					document.getElementById('itemModalBarcode').textContent = item.barcode || item.sku || '—';
+					document.getElementById('itemModalCostPrice').textContent = Utils.formatNaira(item.cost_price ?? item.costPrice ?? item.purchase_price?? 0);
+					document.getElementById('itemModalSellingPrice').textContent = Utils.formatNaira(item.price ?? 0);
+					document.getElementById('itemModalStock').textContent = item.stock ?? 0;
+					document.getElementById('itemModalDescription').textContent = item.description || 'No description available.';
+
+					const btn = document.getElementById('itemModalAddBtn');
+					if (item.stock <= 0) {
+						btn.disabled = true;
+						btn.className = 'w-full py-3 rounded-xl bg-stone-200 text-stone-400 text-xs font-semibold flex items-center justify-center gap-2 cursor-not-allowed';
+						btn.innerHTML = 'Out of Stock';
+					} else {
+						btn.disabled = false;
+						btn.className = 'w-full py-3 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-cobalt-900 active:scale-[0.98] transition flex items-center justify-center gap-2';
+						btn.innerHTML = '<i class="w-4 h-4 text-emerald-400" data-lucide="plus"></i>Add to Ticket';
+						btn.onclick = () => {
+							if (AppState.itemModalCode) {
+								AppPOS.processBarcode(AppState.itemModalCode);
+								this.closeItemModal();
+							}
+						};
+					}
+
+					const m = document.getElementById('itemModal');
+					m.classList.remove('hidden');
+					m.classList.add('flex');
+					lucide.createIcons();
+				},
+
+				closeItemModal() {
+					const m = document.getElementById('itemModal');
+					m.classList.add('hidden');
+					m.classList.remove('flex');
+					AppState.itemModalCode = null;
+				},
+
+				copyItemId() {
+					const id = document.getElementById('itemModalBarcode').textContent.trim();
+					if (!id || id === '—') return;
+					navigator.clipboard.writeText(id).then(() => {
+						const btn = document.querySelector('#itemModalBarcode')?.parentElement?.querySelector('button');
+						if (!btn) return;
+						btn.innerHTML = '<i class="w-3.5 h-3.5 text-emerald-500" data-lucide="check"></i>';
+						btn.title = 'Copied';
+						lucide.createIcons();
+						setTimeout(() => {
+							btn.innerHTML = '<i class="w-3.5 h-3.5" data-lucide="copy"></i>';
+							btn.title = 'Copy Item ID';
+							lucide.createIcons();
+						}, 1500);
+					});
+				},
+
+				openCartSheet() {
+					const overlay = document.getElementById('cartSheetOverlay');
+					const sheet = document.getElementById('cartSheet');
+					overlay.classList.remove('hidden');
+					sheet.classList.remove('sheet-down');
+					sheet.classList.add('sheet-up');
+				},
+
+				closeCartSheet() {
+					const overlay = document.getElementById('cartSheetOverlay');
+					const sheet = document.getElementById('cartSheet');
+					sheet.classList.remove('sheet-up');
+					sheet.classList.add('sheet-down');
+					setTimeout(() => overlay.classList.add('hidden'), 250);
+				},
+
+				switchTab(tab) {
+					const inv = document.getElementById('invScroll');
+					const hist = document.getElementById('historyTab');
+
+					document.querySelectorAll('nav button[data-tab]').forEach(b => {
+						const active = b.dataset.tab === tab;
+						b.classList.toggle('text-stone-700', active);
+						b.classList.toggle('text-stone-400', !active);
+						b.classList.toggle('border-stone-900', active);
+						b.classList.toggle('border-transparent', !active);
+					});
+
+					if (tab === 'history') {
+						AppRender.history();
+						hist.classList.remove('hidden');
+						hist.classList.add('flex');
+						inv.parentElement.style.display = 'none';
+					} else {
+						hist.classList.add('hidden');
+						hist.classList.remove('flex');
+						inv.parentElement.style.display = '';
+					}
+
+					if (tab === 'sell') document.getElementById('manualBarcode').focus();
+				}
+			};
+
+			// ========================================
+			// EVENT LISTENERS & INITIALIZATION
+			// ========================================
+
+			window.addEventListener('keydown', (e) => {
+				if (e.key === 'F1') {
+					e.preventDefault();
+					document.getElementById('manualBarcode').focus();
+				} else if (e.key === 'F12') {
+					e.preventDefault();
+					AppUI.confirmCheckout();
+				} else if (e.key === 'Escape') {
+					if (AppScanner.isScanning) AppScanner.stop();
+					['settingsModal', 'confirmModal', 'successModal', 'itemModal'].forEach(id => {
+						const m = document.getElementById(id);
+						if (!m.classList.contains('hidden')) {
+							m.classList.add('hidden');
+							m.classList.remove('flex');
+						}
+					});
+					AppUI.closeCartSheet();
+				}
+			});
+
+			document.getElementById('manualBarcode').addEventListener('keydown', (e) => {
+				if (e.key === 'Enter') AppPOS.manualLookup();
+			});
+
+			document.addEventListener('click', (e) => {
+				const popover = document.getElementById('accountPopover');
+				if (!popover) return;
+				const accountButton = e.target.closest('[onclick*="toggleAccountPopover"]');
+				if (!popover.contains(e.target) && !accountButton) AppUI.closeAccountPopover();
+			});
+
+			document.getElementById('cartSheetOverlay')?.addEventListener('click', (e) => {
+				if (e.target.id === 'cartSheetOverlay') AppUI.closeCartSheet();
+			});
+
+			// Stock validation control - only for manager+
+			document.getElementById('stockValidationControl')?.addEventListener('change', () => {
+				if (!AppState.canManageInventory()) {
+					document.getElementById('ignoreStockToggle').checked = false;
+					Utils.showToast('Only managers and above can bypass stock validation', true);
+				}
+			});
+
+			setInterval(() => {
+				const now = new Date();
+				document.getElementById('header-clock').textContent = now.toLocaleTimeString('en-GB', { hour12: false });
+			}, 1000);
+
+			// Initialize app
+			AppState.init();
+			AppRender.inventory();
+			AppRender.cart();
+			AppRender.transactions();
+			AppUI.updateAccountUI();
+			
+			if (AppState.session) {
+				AppUI.updateAuthHeader();
+				AppAuth.showLoggedInView();
+			} else {
+				AppUI.hideAuthHeader();
+				AppAuth.showLoggedOutView();
+			}
+
+			lucide.createIcons();
+
+			if (AppState.zohoCfg) {
+				AppUI.updateZohoBadge(true, AppState.zohoCfg.org);
+				AppPOS.loadZohoItems();
+			} else {
+				AppUI.updateZohoBadge(false);
+			}
+		</script>
+	</body>
 </html>
-
-
-
